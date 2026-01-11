@@ -9,6 +9,32 @@ const RESUME_API_BASE = "https://resume-profile-front.hh.ru";
 const HH_BASE = "https://hh.ru";
 
 /**
+ * Normalize date to YYYY-MM-DD format required by HH.ru API
+ * Handles: "2025-02", "2025-02-15", null, undefined
+ */
+function normalizeDate(dateStr) {
+  if (!dateStr) return null;
+
+  // Already in YYYY-MM-DD format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return dateStr;
+  }
+
+  // YYYY-MM format - append -01
+  if (/^\d{4}-\d{2}$/.test(dateStr)) {
+    return `${dateStr}-01`;
+  }
+
+  // Try to parse other formats
+  const date = new Date(dateStr);
+  if (!Number.isNaN(date.getTime())) {
+    return date.toISOString().split("T")[0];
+  }
+
+  return dateStr; // Return as-is if unparseable
+}
+
+/**
  * Get XSRF token from cookies
  * The token is stored in the _xsrf cookie
  */
@@ -65,7 +91,21 @@ async function makeHHRequest(url, options = {}) {
     throw new Error(`HH.ru API error ${response.status}: ${errorText}`);
   }
 
-  return response.json();
+  const data = await response.json();
+
+  // Check for validation errors in response body (API returns 200 with errors array)
+  if (data.errors && data.errors.length > 0) {
+    const errorMessages = data.errors
+      .map(
+        (e) =>
+          `${e.fieldNamePath || e.field || "unknown"}: ${e.code || e.message || "validation error"}`,
+      )
+      .join("; ");
+    console.error("[HH API] Validation errors:", data.errors);
+    throw new Error(`HH.ru API validation error: ${errorMessages}`);
+  }
+
+  return data;
 }
 
 /**
@@ -92,13 +132,13 @@ export async function updateResumeExperience(resumeHash, experience) {
         companyName: exp.companyName,
         companyState: exp.companyState || null,
         companyUrl: exp.companyUrl || null,
-        description: exp.description,
+        description: exp.description || "", // Ensure non-null (required by API)
         employerId: exp.employerId || null,
-        endDate: exp.endDate || null,
+        endDate: normalizeDate(exp.endDate), // Normalize to YYYY-MM-DD
         id: exp.id || null,
         industries: exp.industries || [],
         position: exp.position,
-        startDate: exp.startDate,
+        startDate: normalizeDate(exp.startDate), // Normalize to YYYY-MM-DD
       })),
     },
   };
@@ -138,6 +178,35 @@ export async function updateResumeSkills(resumeHash, keySkills) {
 }
 
 /**
+ * Update resume skill levels section (required step for publishing)
+ *
+ * @param {string} resumeHash - Resume identifier
+ * @param {Array} userSkillLevels - Optional skill verification levels
+ */
+export async function updateResumeSkillLevels(
+  resumeHash,
+  userSkillLevels = [],
+) {
+  const url = `${RESUME_API_BASE}/profile/shards/resume/update`;
+
+  const body = {
+    additionalProperties: { anyJob: false },
+    currentScreenId: "skill_levels",
+    profile: {},
+    questionToAnswerMap: {},
+    resume: {},
+    resumeHash: resumeHash,
+    userSkillLevels: userSkillLevels,
+  };
+
+  console.log("[HH API] Updating skill_levels:", body);
+  return makeHHRequest(url, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+/**
  * Apply to a vacancy with cover letter
  *
  * @param {string} vacancyId - Vacancy ID from URL
@@ -164,7 +233,13 @@ export async function applyToVacancy(vacancyId, resumeHash, coverLetter) {
     hhtmSourceLabel: "",
   });
 
-  console.log("[HH API] Applying to vacancy:", vacancyId);
+  console.log(
+    "[HH API] Applying to vacancy:",
+    vacancyId,
+    "with resume:",
+    resumeHash,
+  );
+  console.log("[HH API] Apply request body:", formData.toString());
 
   const response = await fetch(url, {
     method: "POST",
@@ -180,13 +255,31 @@ export async function applyToVacancy(vacancyId, resumeHash, coverLetter) {
     body: formData.toString(),
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Application failed ${response.status}: ${errorText}`);
+  const responseText = await response.text();
+  console.log("[HH API] Apply response status:", response.status);
+  console.log("[HH API] Apply response:", responseText);
+
+  let result;
+  try {
+    result = JSON.parse(responseText);
+  } catch (e) {
+    throw new Error(`Application failed ${response.status}: ${responseText}`);
   }
 
-  const result = await response.json();
-  console.log("[HH API] Application result:", result);
+  // Check for error in response body
+  if (result.error) {
+    // Try to get more details about the error
+    console.error("[HH API] Apply error details:", result);
+    throw new Error(
+      `Application failed: ${result.error}${result.message ? ` - ${result.message}` : ""}`,
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(`Application failed ${response.status}: ${responseText}`);
+  }
+
+  console.log("[HH API] Application successful:", result);
 
   return {
     success: true,
@@ -196,8 +289,75 @@ export async function applyToVacancy(vacancyId, resumeHash, coverLetter) {
 }
 
 /**
+ * Parse resume data from HH.ru API response
+ * Extracts rich information for display in resume selector
+ * Handles both direct values and nested {string: value} format
+ */
+function parseResumeData(r) {
+  const attrs = r._attributes || {};
+  const hash = attrs.hash || r.hash;
+
+  // Helper to extract value from nested format like [{string: "value"}] or direct value
+  const extractValue = (field) => {
+    if (Array.isArray(field) && field[0]?.string !== undefined) {
+      return field[0].string;
+    }
+    if (Array.isArray(field) && field.length > 0) {
+      return field[0];
+    }
+    return field;
+  };
+
+  // Helper to extract array of strings from nested format like [{string: "a"}, {string: "b"}]
+  const extractStringArray = (field) => {
+    if (!Array.isArray(field)) return [];
+    return field.map((item) =>
+      item?.string !== undefined ? item.string : item,
+    );
+  };
+
+  // Parse title
+  const rawTitle = extractValue(r.title);
+  const title = rawTitle || `Resume ${(hash || "").substring(0, 8)}...`;
+
+  // Parse status: modified, not_finished, ok, new
+  const rawStatus = attrs.status || r.status || "unknown";
+  let status = "draft";
+  if (rawStatus === "not_finished") {
+    status = "draft";
+  } else if (
+    rawStatus === "modified" ||
+    rawStatus === "ok" ||
+    rawStatus === "new"
+  ) {
+    status = attrs.isSearchable ? "published" : "hidden";
+  }
+
+  // Parse skills (limit to 5 for display)
+  const keySkills = extractStringArray(r.keySkills).slice(0, 5);
+
+  // Parse experience (in months) - can be [{string: 83}] or just 83
+  const rawExp = extractValue(r.totalExperience);
+  const totalExperience = typeof rawExp === "number" ? rawExp : 0;
+
+  // Parse updated timestamp
+  const updatedAt = attrs.updated || attrs.lastEditTime || Date.now();
+
+  return {
+    hash,
+    title,
+    status,
+    isPublished: status === "published",
+    keySkills,
+    totalExperience,
+    updatedAt,
+  };
+}
+
+/**
  * Get user's resumes list from HH.ru
- * Extracts resume hashes from the applicant resumes page
+ * Fetches the page and parses JSON data if available
+ * Returns rich data for resume selector display
  */
 export async function getUserResumes() {
   const url = `${HH_BASE}/applicant/resumes`;
@@ -211,30 +371,79 @@ export async function getUserResumes() {
       throw new Error(`Failed to fetch resumes: ${response.status}`);
     }
 
+    const contentType = response.headers.get("content-type");
+
+    // Try to parse as JSON if server returns JSON
+    if (contentType?.includes("application/json")) {
+      const data = await response.json();
+
+      if (!data.applicantResumes?.length) {
+        return { success: true, resumes: [] };
+      }
+
+      const resumes = data.applicantResumes.map(parseResumeData);
+      return { success: true, resumes };
+    }
+
+    // Fallback: parse HTML page
     const html = await response.text();
 
-    // Parse resume hashes from the page
-    // Look for patterns like /resume/0a6710a7ff0fe2dac80039ed1f493576455962
+    // Try to extract applicantResumes JSON from HTML
+    // The data is embedded as part of a larger JSON object in the page
+    const startMarker = '"applicantResumes":[';
+    const startIdx = html.indexOf(startMarker);
+
+    if (startIdx !== -1) {
+      try {
+        // Find the array start
+        const arrayStart = startIdx + startMarker.length - 1; // position of '['
+
+        // Parse the array by counting brackets
+        let depth = 0;
+        let arrayEnd = arrayStart;
+        for (let i = arrayStart; i < html.length; i++) {
+          const char = html[i];
+          if (char === "[") depth++;
+          else if (char === "]") {
+            depth--;
+            if (depth === 0) {
+              arrayEnd = i + 1;
+              break;
+            }
+          }
+        }
+
+        const jsonArray = html.substring(arrayStart, arrayEnd);
+        const applicantResumes = JSON.parse(jsonArray);
+
+        if (applicantResumes?.length > 0) {
+          console.log(
+            "[HH API] Parsed",
+            applicantResumes.length,
+            "resumes from HTML",
+          );
+          const resumes = applicantResumes.map(parseResumeData);
+          return { success: true, resumes };
+        }
+      } catch (e) {
+        console.warn("[HH API] Failed to parse embedded JSON:", e);
+      }
+    }
+
+    // Fallback: extract resume hashes from HTML
     const resumePattern = /\/resume\/([a-f0-9]{32,})/g;
     const matches = [...html.matchAll(resumePattern)];
     const uniqueHashes = [...new Set(matches.map((m) => m[1]))];
 
-    // Try to extract resume titles from the page
-    const resumes = uniqueHashes.map((hash) => {
-      // Look for the title near the hash in the HTML
-      const titlePattern = new RegExp(
-        `data-qa="resume[^"]*"[^>]*>([^<]+)<[^]*?${hash}`,
-        "i",
-      );
-      const titleMatch = html.match(titlePattern);
-
-      return {
-        hash: hash,
-        title: titleMatch
-          ? titleMatch[1].trim()
-          : `Resume ${hash.substring(0, 8)}...`,
-      };
-    });
+    const resumes = uniqueHashes.map((hash) => ({
+      hash,
+      title: `Resume ${hash.substring(0, 8)}...`,
+      status: "unknown",
+      isPublished: true,
+      keySkills: [],
+      totalExperience: 0,
+      updatedAt: Date.now(),
+    }));
 
     return { success: true, resumes };
   } catch (error) {
@@ -305,23 +514,32 @@ export async function updateResumeCommon(resumeHash, personalInfo) {
 export async function updateResumeEducation(resumeHash, education) {
   const url = `${RESUME_API_BASE}/profile/shards/resume/update`;
 
+  // If education is provided, map it to the expected format
+  // If empty, send empty profile to just advance the screen
+  const hasEducation = education && education.length > 0;
+
   const body = {
     additionalProperties: { anyJob: false },
     currentScreenId: "educations",
-    profile: {
-      elementaryEducation: [],
-      primaryEducation: education.map((edu) => ({
-        educationLevel: edu.level || "higher",
-        name: edu.institution,
-        organization: edu.faculty || null,
-        result: edu.degree || null,
-        year: edu.year,
-        facultyId: null,
-        specialtyId: null,
-        universityId: null,
-        id: null,
-      })),
-    },
+    profile: hasEducation
+      ? {
+          elementaryEducation: [],
+          primaryEducation: education.map((edu) => ({
+            educationLevel: edu.level || edu.educationLevel || "higher",
+            name: edu.institution || edu.name || "",
+            organization: edu.faculty || edu.organization || null,
+            result: edu.degree || edu.result || null,
+            year: edu.year || new Date().getFullYear(),
+            facultyId: null,
+            specialtyId: null,
+            universityId: null,
+            id: edu.id || null,
+          })),
+        }
+      : {
+          // Empty education - just advance the screen
+          elementaryEducation: [],
+        },
     questionToAnswerMap: {},
     resume: {},
     resumeHash: resumeHash,
@@ -348,8 +566,12 @@ export async function createCompleteResume(
   title,
 ) {
   console.log("[HH API] Creating complete resume:", title);
+  console.log(
+    "[HH API] personalizedData:",
+    JSON.stringify(personalizedData, null, 2),
+  );
 
-  // 1. Create initial resume
+  // 1. Create initial resume shell
   const createResult = await createResume(title, "96");
   if (!createResult.success) {
     return createResult;
@@ -359,8 +581,9 @@ export async function createCompleteResume(
   console.log("[HH API] Created resume shell:", resumeHash);
 
   try {
-    // 2. Fill common (personal info + phone)
+    // 2. Fill common (personal info + phone) → nextScreen: educations
     const nameParts = (baseResume.fullName || "").split(" ");
+    console.log("[HH API] Step 2: Updating common...");
     await updateResumeCommon(resumeHash, {
       firstName: nameParts[0] || "Name",
       lastName: nameParts.slice(1).join(" ") || "Surname",
@@ -371,20 +594,29 @@ export async function createCompleteResume(
       citizenshipId: baseResume.citizenshipId || "113",
     });
 
-    // 3. Fill education
-    if (baseResume.education?.length) {
-      await updateResumeEducation(resumeHash, baseResume.education);
-    }
+    // 3. Fill education → nextScreen: keyskills
+    // ALWAYS call, even with empty array - API needs this to advance screen
+    console.log("[HH API] Step 3: Updating education...");
+    await updateResumeEducation(resumeHash, baseResume.education || []);
 
-    // 4. Fill experience
-    if (personalizedData.experience?.length) {
-      await updateResumeExperience(resumeHash, personalizedData.experience);
-    }
+    // 4. Fill keyskills → nextScreen: skill_levels
+    // ALWAYS call, even with empty array
+    const skills = personalizedData.keySkills || [];
+    console.log("[HH API] Step 4: Updating keyskills:", skills);
+    await updateResumeSkills(resumeHash, skills);
 
-    // 5. Fill skills
-    if (personalizedData.keySkills?.length) {
-      await updateResumeSkills(resumeHash, personalizedData.keySkills);
-    }
+    // 5. Fill skill_levels → nextScreen: experience
+    console.log("[HH API] Step 5: Updating skill_levels...");
+    await updateResumeSkillLevels(resumeHash, []);
+
+    // 6. Fill experience (LAST step) → status becomes "new" (publishable)
+    const experience = personalizedData.experience || [];
+    console.log(
+      "[HH API] Step 6: Updating experience:",
+      experience.length,
+      "items",
+    );
+    await updateResumeExperience(resumeHash, experience);
 
     console.log("[HH API] Complete resume created successfully:", resumeHash);
     return { success: true, resumeHash };
@@ -404,6 +636,9 @@ export async function createCompleteResume(
 export async function createResume(title, professionalRoleId = "96") {
   const url = `${RESUME_API_BASE}/profile/shards/resume/create`;
 
+  // Truncate title if too long (HH.ru has a limit)
+  const safeTitle = title.length > 50 ? title.substring(0, 50) : title;
+
   const body = {
     additionalProperties: { anyJob: false },
     currentScreenId: "professional_role",
@@ -411,7 +646,7 @@ export async function createResume(title, professionalRoleId = "96") {
     profile: {},
     resume: {
       professionalRole: [professionalRoleId],
-      title: [title],
+      title: [safeTitle],
     },
   };
 
@@ -425,9 +660,31 @@ export async function createResume(title, professionalRoleId = "96") {
 
     console.log("[HH API] Resume created:", data);
 
+    // Check for errors in response
+    if (data.errors && data.errors.length > 0) {
+      console.error("[HH API] Resume creation errors:", data.errors);
+      return {
+        success: false,
+        error: data.errors
+          .map((e) => e.message || e.key || JSON.stringify(e))
+          .join(", "),
+      };
+    }
+
+    // resumeHash is in data.resume._attributes.hash, not at root
+    const resumeHash = data.resume?._attributes?.hash || data.resumeHash;
+
+    if (!resumeHash) {
+      console.error("[HH API] No resumeHash in response:", data);
+      return {
+        success: false,
+        error: "No resumeHash returned from API",
+      };
+    }
+
     return {
       success: true,
-      resumeHash: data.resumeHash,
+      resumeHash: resumeHash,
       nextScreen: data.nextIncompleteScreenId,
     };
   } catch (error) {

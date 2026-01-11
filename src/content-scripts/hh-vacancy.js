@@ -12,7 +12,6 @@ let baseResume = null;
 let generatedResume = null;
 let fitAssessment = null;
 let isGenerating = false;
-let existingResumes = [];
 
 /**
  * Initialize content script
@@ -151,25 +150,6 @@ function createModal() {
           }
         </div>
 
-        <!-- Apply Mode Selector -->
-        <div class="apply-mode-section">
-          <div class="apply-mode-selector">
-            <label class="mode-option">
-              <input type="radio" name="apply-mode" value="edit" checked>
-              <span>Редактировать существующее резюме</span>
-            </label>
-            <label class="mode-option">
-              <input type="radio" name="apply-mode" value="create">
-              <span>Создать новое резюме</span>
-            </label>
-          </div>
-          <div id="resume-selector" class="resume-selector">
-            <select id="existing-resume-select" class="hh-autoapply-select">
-              <option value="">Загрузка резюме...</option>
-            </select>
-          </div>
-        </div>
-
         <!-- Resume Comparison Section -->
         <div class="resume-comparison" id="resume-comparison">
           <!-- Left: Base Resume -->
@@ -272,60 +252,12 @@ function createModal() {
     .querySelector("#modal-apply-btn")
     .addEventListener("click", submitApplication);
 
-  // Mode toggle listeners
-  const modeRadios = modal.querySelectorAll('input[name="apply-mode"]');
-  modeRadios.forEach((radio) => {
-    radio.addEventListener("change", onModeChange);
-  });
-
   // Close on backdrop click
   modal.addEventListener("click", (e) => {
     if (e.target === modal) closeModal();
   });
 
   document.body.appendChild(modal);
-}
-
-/**
- * Handle mode toggle change
- */
-function onModeChange(e) {
-  const mode = e.target.value;
-  const resumeSelector = document.getElementById("resume-selector");
-  const applyBtnText = document.getElementById("apply-btn-text");
-
-  if (mode === "edit") {
-    resumeSelector.style.display = "block";
-    applyBtnText.textContent = "Откликнуться";
-  } else {
-    resumeSelector.style.display = "none";
-    applyBtnText.textContent = "Создать резюме и откликнуться";
-  }
-}
-
-/**
- * Load existing resumes from HH.ru for edit mode
- */
-async function loadExistingResumes() {
-  const select = document.getElementById("existing-resume-select");
-
-  try {
-    const response = await sendMessage({ type: "GET_USER_RESUMES" });
-
-    if (response.success && response.resumes?.length > 0) {
-      existingResumes = response.resumes;
-      select.innerHTML = response.resumes
-        .map((r) => `<option value="${r.hash}">${escapeHtml(r.title)}</option>`)
-        .join("");
-    } else {
-      select.innerHTML = '<option value="">Нет резюме на HH.ru</option>';
-      existingResumes = [];
-    }
-  } catch (error) {
-    console.error("Failed to load resumes:", error);
-    select.innerHTML = `<option value="">Ошибка загрузки</option>`;
-    existingResumes = [];
-  }
 }
 
 /**
@@ -361,9 +293,6 @@ async function startGeneration() {
   const fitScoreSection = document.getElementById("fit-score-section");
 
   try {
-    // Step 0: Load existing resumes for edit mode
-    loadExistingResumes();
-
     // Step 1: Load base resume
     baseResume = await sendMessage({ type: "GET_BASE_RESUME" });
 
@@ -773,7 +702,7 @@ async function regenerateLetter() {
 }
 
 /**
- * Submit application: Either edit existing resume or create new one, then apply
+ * Submit application: Create new resume and apply
  */
 async function submitApplication() {
   const btn = document.getElementById("modal-apply-btn");
@@ -781,8 +710,6 @@ async function submitApplication() {
     .getElementById("modal-cover-letter")
     .value.trim();
   const status = document.getElementById("letter-status");
-  const mode =
-    document.querySelector('input[name="apply-mode"]:checked')?.value || "edit";
 
   if (!generatedResume) {
     status.textContent = "Дождитесь генерации резюме";
@@ -791,73 +718,43 @@ async function submitApplication() {
   }
 
   btn.disabled = true;
-  let resumeHashToUse = null;
 
   try {
-    if (mode === "edit") {
-      // EDIT MODE: Update existing resume
-      const existingHash = document.getElementById(
-        "existing-resume-select",
-      ).value;
+    // Step 1: Generate AI title for resume
+    btn.innerHTML = '<span class="spinner"></span> Генерация названия...';
 
-      if (!existingHash) {
-        throw new Error("Выберите резюме для редактирования");
-      }
+    const titleResponse = await sendMessage({
+      type: "GENERATE_RESUME_TITLE",
+      vacancy: currentVacancy,
+      resume: generatedResume,
+    });
 
-      resumeHashToUse = existingHash;
-      console.log("[HH AutoApply] Editing existing resume:", resumeHashToUse);
+    // Fallback title if AI generation fails
+    const resumeTitle =
+      titleResponse.success && titleResponse.title
+        ? titleResponse.title
+        : generatedResume.experience?.[0]?.position || "Специалист";
 
-      // Update experience
-      btn.innerHTML = '<span class="spinner"></span> Обновление опыта...';
+    console.log("[HH AutoApply] Resume title:", resumeTitle);
 
-      if (generatedResume.experience?.length) {
-        const expResponse = await sendMessage({
-          type: "UPDATE_RESUME_EXPERIENCE",
-          resumeHash: existingHash,
-          experience: generatedResume.experience,
-        });
+    // Step 2: Create new resume on HH.ru
+    btn.innerHTML = '<span class="spinner"></span> Создание резюме...';
 
-        if (expResponse?.error) {
-          console.warn("Experience update warning:", expResponse.error);
-        }
-      }
+    const createResponse = await sendMessage({
+      type: "CREATE_COMPLETE_RESUME",
+      baseResume: baseResume,
+      personalizedData: generatedResume,
+      title: resumeTitle,
+    });
 
-      // Update skills
-      btn.innerHTML = '<span class="spinner"></span> Обновление навыков...';
-
-      if (generatedResume.keySkills?.length) {
-        const skillsResponse = await sendMessage({
-          type: "UPDATE_RESUME_SKILLS",
-          resumeHash: existingHash,
-          keySkills: generatedResume.keySkills,
-        });
-
-        if (skillsResponse?.error) {
-          console.warn("Skills update warning:", skillsResponse.error);
-        }
-      }
-    } else {
-      // CREATE MODE: Create new complete resume
-      btn.innerHTML = '<span class="spinner"></span> Создание резюме...';
-
-      const resumeTitle = `CV для ${currentVacancy?.company || "компании"} — ${currentVacancy?.name || "вакансия"}`;
-
-      const createResponse = await sendMessage({
-        type: "CREATE_COMPLETE_RESUME",
-        baseResume: baseResume,
-        personalizedData: generatedResume,
-        title: resumeTitle,
-      });
-
-      if (!createResponse.success) {
-        throw new Error(createResponse.error || "Не удалось создать резюме");
-      }
-
-      resumeHashToUse = createResponse.resumeHash;
-      console.log("[HH AutoApply] Created complete resume:", resumeHashToUse);
+    if (!createResponse.success) {
+      throw new Error(createResponse.error || "Не удалось создать резюме");
     }
 
-    // Apply to vacancy
+    const resumeHashToUse = createResponse.resumeHash;
+    console.log("[HH AutoApply] Created resume:", resumeHashToUse);
+
+    // Step 3: Apply to vacancy
     btn.innerHTML = '<span class="spinner"></span> Отправка отклика...';
 
     const applyResponse = await sendMessage({
@@ -887,14 +784,12 @@ async function submitApplication() {
     status.className = "hh-autoapply-status error";
 
     btn.disabled = false;
-    const btnText =
-      mode === "edit" ? "Откликнуться" : "Создать резюме и откликнуться";
     btn.innerHTML = `
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
         <polyline points="22 4 12 14.01 9 11.01"></polyline>
       </svg>
-      <span id="apply-btn-text">${btnText}</span>
+      <span id="apply-btn-text">Откликнуться</span>
     `;
   }
 }

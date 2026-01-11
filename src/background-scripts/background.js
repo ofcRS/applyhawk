@@ -20,6 +20,7 @@ import {
   calculateAggressiveness,
   generateCoverLetter,
   generatePersonalizedResume,
+  generateResumeTitle,
   parseResumePDF,
   shouldSkipVacancy,
 } from "./openrouter.js";
@@ -97,6 +98,9 @@ async function handleMessage(message, sender) {
 
     case "PARSE_RESUME_PDF":
       return await parseResumePDF(message.pdfText);
+
+    case "GENERATE_RESUME_TITLE":
+      return await generateResumeTitle(message.vacancy, message.resume);
 
     // HH.ru Internal API (uses session cookies)
     case "CHECK_HH_AUTH":

@@ -240,16 +240,16 @@ function addExperienceItem(data = null) {
  */
 function collectSettings() {
   // Collect AggressiveFit settings
-  const aggressiveFitEnabled =
-    elements.aggressiveFitEnabled?.checked !== false;
-  const minFitScore = (parseInt(elements.minFitScore?.value, 10) || 15) / 100;
+  const aggressiveFitEnabled = elements.aggressiveFitEnabled?.checked !== false;
+  const minFitScore =
+    (Number.parseInt(elements.minFitScore?.value, 10) || 15) / 100;
   const maxAggressiveness =
-    (parseInt(elements.maxAggressiveness?.value, 10) || 95) / 100;
+    (Number.parseInt(elements.maxAggressiveness?.value, 10) || 95) / 100;
 
   let aggressivenessOverride = null;
   if (elements.aggressivenessOverrideEnabled?.checked) {
     aggressivenessOverride =
-      (parseInt(elements.aggressivenessOverride?.value, 10) || 50) / 100;
+      (Number.parseInt(elements.aggressivenessOverride?.value, 10) || 50) / 100;
   }
 
   return {

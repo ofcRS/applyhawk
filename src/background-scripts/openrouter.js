@@ -159,10 +159,24 @@ Analyze now:`;
   }
 
   const data = await response.json();
+  console.log(
+    "[OpenRouter] Fit assessment response:",
+    JSON.stringify(data, null, 2),
+  );
+
   const content = data.choices?.[0]?.message?.content;
 
   if (!content) {
-    throw new Error("No fit assessment generated");
+    // Log more details about the failed response
+    console.error("[OpenRouter] No content in response. Full response:", data);
+    if (data.error) {
+      throw new Error(
+        `Fit assessment API error: ${data.error.message || JSON.stringify(data.error)}`,
+      );
+    }
+    throw new Error(
+      "No fit assessment generated - empty response from AI model",
+    );
   }
 
   try {
@@ -267,10 +281,16 @@ export async function generateCoverLetter(
 /**
  * Build the prompt for cover letter generation
  */
-async function buildPrompt(vacancy, resume, customTemplate = null, fitAssessment = null) {
+async function buildPrompt(
+  vacancy,
+  resume,
+  customTemplate = null,
+  fitAssessment = null,
+) {
   // Get settings for contact info
   const settings = await getSettings();
-  const contactTelegram = settings.contactTelegram || resume.contacts?.telegram || "";
+  const contactTelegram =
+    settings.contactTelegram || resume.contacts?.telegram || "";
   const contactEmail = settings.contactEmail || resume.contacts?.email || "";
 
   // Use custom template if provided
@@ -524,8 +544,8 @@ OUTPUT FORMAT (JSON only, no explanation):
     {
       "company": "Company name",
       "position": "Job title",
-      "startDate": "YYYY-MM format (e.g., 2023-01)",
-      "endDate": "YYYY-MM format or null if current job",
+      "startDate": "YYYY-MM-DD format (e.g., 2023-01-15)",
+      "endDate": "YYYY-MM-DD format or null if current job (e.g., 2024-06-30)",
       "description": "Job description and responsibilities",
       "achievements": ["Achievement 1", "Achievement 2"]
     }
@@ -548,7 +568,7 @@ OUTPUT FORMAT (JSON only, no explanation):
 
 REQUIREMENTS:
 1. Extract ALL work experience entries in chronological order (most recent first)
-2. Parse dates carefully - convert "Feb 2025" to "2025-02", "Present" to null
+2. Parse dates carefully - convert "Feb 2025" to "2025-02-01", "Present" to null
 3. Skills should be individual items, not grouped
 4. If a field is not found in the resume, use empty string or empty array
 5. For achievements, extract quantifiable results if mentioned in the job description
@@ -661,9 +681,13 @@ ${fitSection}
 CALCULATED AGGRESSIVENESS: ${aggressiveness.toFixed(2)} (0.0 to 1.0)
 
 TASK:
-Rewrite experience using the aggressiveness level.${fitAssessment ? ` Focus on:
+Rewrite experience using the aggressiveness level.${
+    fitAssessment
+      ? ` Focus on:
 - Highlighting: ${fitAssessment.strengths?.join(", ") || "relevant experience"}
-- Addressing gaps: ${fitAssessment.gaps?.join(", ") || "none"}` : ""}
+- Addressing gaps: ${fitAssessment.gaps?.join(", ") || "none"}`
+      : ""
+  }
 
 AGGRESSIVENESS BEHAVIOR:
 
@@ -706,8 +730,8 @@ OUTPUT FORMAT (JSON only):
     {
       "companyName": "exact company name",
       "position": "exact position",
-      "startDate": "YYYY-MM-DD",
-      "endDate": "YYYY-MM-DD or null if current",
+      "startDate": "YYYY-MM-DD (e.g., 2024-01-15)",
+      "endDate": "YYYY-MM-DD or null if current (e.g., 2025-06-30)",
       "description": "- Bullet point 1\\n- Bullet point 2\\n- Bullet point 3"
     }
   ],
@@ -716,4 +740,95 @@ OUTPUT FORMAT (JSON only):
 \`\`\`
 
 Generate the personalized resume now:`;
+}
+
+/**
+ * Generate a professional, catchy resume title for HH.ru
+ *
+ * @param {Object} vacancy - Vacancy data
+ * @param {Object} personalizedResume - The generated personalized resume
+ * @returns {Object} - { success, title }
+ */
+export async function generateResumeTitle(vacancy, personalizedResume) {
+  const settings = await getSettings();
+
+  if (!settings.openRouterApiKey) {
+    throw new Error(
+      "OpenRouter API key not configured. Please set it in Options.",
+    );
+  }
+
+  const prompt = `Generate a professional, catchy resume title (max 50 characters) for HH.ru job application.
+
+TARGET JOB: ${vacancy.name} at ${vacancy.company}
+
+CANDIDATE:
+Top Skills: ${personalizedResume.keySkills?.slice(0, 5).join(", ") || "Not specified"}
+Recent Position: ${personalizedResume.experience?.[0]?.position || "Not specified"} at ${personalizedResume.experience?.[0]?.companyName || ""}
+
+REQUIREMENTS:
+- Russian language
+- Professional but memorable
+- Highlight main specialization
+- Max 50 characters
+- NO company name
+- NO "CV для", "Резюме для", "Отклик на"
+- Focus on candidate's expertise, not the target job
+
+GOOD EXAMPLES:
+- "Senior Python Developer | ML & Data"
+- "Full-Stack разработчик (React + Node)"
+- "Backend Architect • High-Load Systems"
+- "Product Manager | B2B SaaS"
+- "DevOps Engineer | Kubernetes & AWS"
+
+BAD EXAMPLES:
+- "CV для Яндекс" (mentions company)
+- "Резюме Frontend Developer" (boring, has "Резюме")
+- "Специалист" (too generic)
+
+OUTPUT: Return ONLY the title text, nothing else.`;
+
+  const response = await fetch(OPENROUTER_API, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${settings.openRouterApiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "chrome-extension://hh-job-autoapply",
+      "X-Title": "HH Job AutoApply",
+    },
+    body: JSON.stringify({
+      model: settings.preferredModel || DEFAULT_MODEL,
+      temperature: 0.8, // Higher temperature for creative titles
+      max_tokens: 60,
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error?.message || "Failed to generate resume title");
+  }
+
+  const data = await response.json();
+  const title = data.choices?.[0]?.message?.content?.trim();
+
+  if (!title) {
+    throw new Error("No title generated");
+  }
+
+  // Clean up the title (remove quotes if AI wrapped it)
+  const cleanTitle = title.replace(/^["']|["']$/g, "").trim();
+
+  return {
+    success: true,
+    title: cleanTitle.substring(0, 50), // Enforce max length
+    model: data.model,
+    usage: data.usage,
+  };
 }
