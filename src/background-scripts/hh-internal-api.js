@@ -627,6 +627,67 @@ export async function createCompleteResume(
 }
 
 /**
+ * Delete a resume from HH.ru
+ *
+ * @param {string} resumeHash - Resume identifier to delete
+ * @returns {Object} - { success: boolean, error?: string }
+ */
+export async function deleteResume(resumeHash) {
+  const url = `${HH_BASE}/applicant/deleteresume?from=resume-delete&hhtmFromLabel=resume-delete`;
+  const xsrfToken = await getXsrfToken();
+
+  console.log("[HH API] Deleting resume:", resumeHash);
+
+  // This endpoint expects form-encoded data
+  const formData = new URLSearchParams({
+    hash: resumeHash,
+    hhtmFrom: "resume-delete",
+    hhtmSource: "resume",
+  });
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-Xsrftoken": xsrfToken,
+        "X-Requested-With": "XMLHttpRequest",
+        "X-hhtmFrom": "",
+        "X-hhtmSource": "resume",
+      },
+      credentials: "include",
+      body: formData.toString(),
+    });
+
+    const responseText = await response.text();
+    console.log("[HH API] Delete response:", response.status, responseText);
+
+    if (!response.ok) {
+      throw new Error(`Delete failed ${response.status}: ${responseText}`);
+    }
+
+    // Success response contains {"url": "/applicant/resumes?from_delete=true"}
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch {
+      // If not JSON, check if status is OK
+      if (response.ok) {
+        return { success: true };
+      }
+      throw new Error(`Delete failed: ${responseText}`);
+    }
+
+    console.log("[HH API] Resume deleted successfully:", resumeHash);
+    return { success: true, ...result };
+  } catch (error) {
+    console.error("[HH API] Failed to delete resume:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Create a new resume on HH.ru
  *
  * @param {string} title - Resume title (e.g., "Frontend Developer для Yandex")
