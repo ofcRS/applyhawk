@@ -51,6 +51,13 @@
               <input type="email" id="contact-email" class="input" placeholder="email@example.com">
             </div>
           </div>
+          <div class="form-group">
+            <label for="salary-expectation">Зарплатные ожидания</label>
+            <input type="text" id="salary-expectation" class="input" placeholder="250 000 ₽ или от 200 000 ₽">
+            <span class="help-text">
+              Будет включено в сопроводительное, если вакансия требует указать зарплату
+            </span>
+          </div>
         </div>
       </section>
 
@@ -174,6 +181,33 @@
               <label for="telegram">Telegram</label>
               <input type="text" id="telegram" class="input" placeholder="@username">
             </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HH.ru Resume Management -->
+      <section class="section">
+        <h2 class="section-title collapsible" data-target="hh-resumes-content">
+          Резюме на HH.ru
+          <span class="collapse-icon">▼</span>
+        </h2>
+
+        <div id="hh-resumes-content" class="collapsible-content">
+          <p class="help-text" style="margin-bottom: 16px;">
+            Управление резюме на HH.ru. Вы должны быть авторизованы на hh.ru для работы с этим разделом.
+          </p>
+
+          <div class="hh-resumes-actions">
+            <button type="button" id="load-hh-resumes" class="btn btn-secondary">
+              Загрузить резюме
+            </button>
+            <button type="button" id="delete-all-resumes" class="btn btn-danger" style="display: none;">
+              Удалить все
+            </button>
+          </div>
+
+          <div id="hh-resumes-list" class="hh-resumes-list">
+            <p class="help-text">Нажмите "Загрузить резюме" для просмотра списка</p>
           </div>
         </div>
       </section>

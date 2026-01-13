@@ -334,7 +334,25 @@ async function startGeneration() {
 
       // Check if should skip
       if (fitAssessment.skipRecommendation?.skip) {
-        showFitWarning(fitAssessment.skipRecommendation.reason);
+        // Replace spinner with warning message in the personalized column
+        const percent = Math.round((fitAssessment.fitScore || 0) * 100);
+        const gapsHtml = (fitAssessment.gaps || [])
+          .slice(0, 3)
+          .map((g) => `<div>• ${escapeHtml(g)}</div>`)
+          .join("");
+
+        personalizedContent.innerHTML = `
+          <div class="low-fit-warning">
+            <div class="warning-icon-large">⚠️</div>
+            <div class="warning-title">Низкое соответствие: ${percent}%</div>
+            <div class="warning-message">
+              Резюме не соответствует вакансии. Генерация может быть неэффективной.
+            </div>
+            <div class="warning-gaps">${gapsHtml}</div>
+          </div>
+        `;
+
+        showFitWarning();
         // Wait for user to click "Proceed anyway" before continuing
         const shouldContinue = await waitForProceedConfirmation();
         if (!shouldContinue) {
@@ -482,13 +500,13 @@ function displayFitScore(assessment) {
 /**
  * Show fit warning when score is too low
  */
-function showFitWarning(reason) {
+function showFitWarning() {
   const warning = document.getElementById("fit-warning");
   if (!warning) return;
 
   const text = warning.querySelector(".warning-text");
   if (text) {
-    text.textContent = `Низкое соответствие: ${reason}. Рекомендуем пропустить.`;
+    text.textContent = "Уверены, что хотите продолжить генерацию?";
   }
 
   warning.classList.remove("hidden");
@@ -652,6 +670,7 @@ async function generateCoverLetter() {
 
 /**
  * Generate cover letter with fit assessment
+ * Uses personalized resume data (not base resume) for better relevance
  */
 async function generateCoverLetterWithFit() {
   const textarea = document.getElementById("modal-cover-letter");
@@ -664,8 +683,15 @@ async function generateCoverLetterWithFit() {
     const response = await sendMessage({
       type: "GENERATE_COVER_LETTER",
       vacancy: currentVacancy,
-      resume: baseResume,
+      // Use personalized resume data instead of base resume
+      personalized: {
+        title: generatedResume?.title || baseResume?.title || "",
+        keySkills: generatedResume?.keySkills || baseResume?.skills || [],
+        experience: generatedResume?.experience || baseResume?.experience || [],
+      },
       fitAssessment: fitAssessment,
+      // Pass aggressiveness to match the tone with resume personalization
+      aggressiveness: fitAssessment?.aggressiveness || 0.5,
     });
 
     if (response.success) {

@@ -116,6 +116,11 @@ if (existsSync("fonts")) {
   cpSync("fonts", join(outDir, "fonts"), { recursive: true });
 }
 
+// Copy prompts folder (YAML templates)
+if (existsSync("src/prompts")) {
+  cpSync("src/prompts", join(outDir, "prompts"), { recursive: true });
+}
+
 console.log("Build completed successfully!");
 
 if (isWatch) {

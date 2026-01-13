@@ -30,6 +30,7 @@ const elements = {
   // Contact fields for cover letters
   contactTelegram: document.getElementById("contact-telegram"),
   contactEmail: document.getElementById("contact-email"),
+  salaryExpectation: document.getElementById("salary-expectation"),
   // AggressiveFit elements
   aggressiveFitEnabled: document.getElementById("aggressivefit-enabled"),
   minFitScore: document.getElementById("min-fit-score"),
@@ -134,6 +135,9 @@ async function loadSettings() {
     }
     if (elements.contactEmail) {
       elements.contactEmail.value = settings.contactEmail || "";
+    }
+    if (elements.salaryExpectation) {
+      elements.salaryExpectation.value = settings.salaryExpectation || "";
     }
 
     // Load AggressiveFit settings
@@ -258,6 +262,7 @@ function collectSettings() {
     coverLetterTemplate: elements.coverTemplate.value.trim(),
     contactTelegram: elements.contactTelegram?.value.trim() || "",
     contactEmail: elements.contactEmail?.value.trim() || "",
+    salaryExpectation: elements.salaryExpectation?.value.trim() || "",
     aggressiveFit: {
       enabled: aggressiveFitEnabled,
       minFitScore,
@@ -469,5 +474,225 @@ function fillResumeForm(resume) {
   }
 }
 
+// ========== HH.ru Resume Management ==========
+
+const hhElements = {
+  loadBtn: document.getElementById("load-hh-resumes"),
+  deleteAllBtn: document.getElementById("delete-all-resumes"),
+  resumesList: document.getElementById("hh-resumes-list"),
+};
+
+/**
+ * Setup HH resume management listeners
+ */
+function setupHHResumeListeners() {
+  hhElements.loadBtn?.addEventListener("click", loadHHResumes);
+  hhElements.deleteAllBtn?.addEventListener("click", deleteAllHHResumes);
+}
+
+/**
+ * Load resumes from HH.ru
+ */
+async function loadHHResumes() {
+  hhElements.loadBtn.disabled = true;
+  hhElements.loadBtn.textContent = "Загрузка...";
+  hhElements.resumesList.innerHTML =
+    '<p class="help-text">Загрузка резюме...</p>';
+
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: "GET_USER_RESUMES",
+    });
+
+    if (!response.success) {
+      throw new Error(response.error || "Не удалось загрузить резюме");
+    }
+
+    renderHHResumes(response.resumes);
+  } catch (error) {
+    console.error("Failed to load HH resumes:", error);
+    hhElements.resumesList.innerHTML = `<p class="help-text error">Ошибка: ${error.message}</p>`;
+  } finally {
+    hhElements.loadBtn.disabled = false;
+    hhElements.loadBtn.textContent = "Загрузить резюме";
+  }
+}
+
+/**
+ * Render HH resumes list
+ */
+function renderHHResumes(resumes) {
+  if (!resumes || resumes.length === 0) {
+    hhElements.resumesList.innerHTML =
+      '<p class="help-text">Резюме не найдены</p>';
+    hhElements.deleteAllBtn.style.display = "none";
+    return;
+  }
+
+  hhElements.deleteAllBtn.style.display = "inline-flex";
+
+  const html = resumes
+    .map(
+      (resume) => `
+    <div class="hh-resume-item" data-hash="${resume.hash}">
+      <div class="hh-resume-info">
+        <div class="hh-resume-title">${escapeHtml(resume.title)}</div>
+        <div class="hh-resume-meta">
+          <span class="hh-resume-status ${resume.status}">${getStatusText(resume.status)}</span>
+          ${resume.keySkills?.length ? `<span class="hh-resume-skills">${resume.keySkills.slice(0, 3).join(", ")}</span>` : ""}
+        </div>
+      </div>
+      <button type="button" class="btn btn-danger btn-sm delete-resume-btn" data-hash="${resume.hash}">
+        Удалить
+      </button>
+    </div>
+  `,
+    )
+    .join("");
+
+  hhElements.resumesList.innerHTML = html;
+
+  // Attach delete handlers
+  const deleteButtons =
+    hhElements.resumesList.querySelectorAll(".delete-resume-btn");
+  for (const btn of deleteButtons) {
+    btn.addEventListener("click", () => deleteHHResume(btn.dataset.hash));
+  }
+}
+
+/**
+ * Get status text in Russian
+ */
+function getStatusText(status) {
+  const statusMap = {
+    published: "Опубликовано",
+    hidden: "Скрыто",
+    draft: "Черновик",
+    unknown: "Неизвестно",
+  };
+  return statusMap[status] || status;
+}
+
+/**
+ * Escape HTML to prevent XSS
+ */
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/**
+ * Delete a single resume from HH.ru
+ */
+async function deleteHHResume(hash) {
+  if (!confirm("Удалить это резюме с HH.ru?")) {
+    return;
+  }
+
+  const item = hhElements.resumesList.querySelector(
+    `.hh-resume-item[data-hash="${hash}"]`,
+  );
+  const btn = item?.querySelector(".delete-resume-btn");
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "...";
+  }
+
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: "DELETE_RESUME",
+      resumeHash: hash,
+    });
+
+    if (!response.success) {
+      throw new Error(response.error || "Не удалось удалить резюме");
+    }
+
+    // Remove from UI
+    item?.remove();
+    showStatus("Резюме удалено", "success");
+
+    // Check if list is now empty
+    const remaining =
+      hhElements.resumesList.querySelectorAll(".hh-resume-item");
+    if (remaining.length === 0) {
+      hhElements.resumesList.innerHTML =
+        '<p class="help-text">Резюме не найдены</p>';
+      hhElements.deleteAllBtn.style.display = "none";
+    }
+  } catch (error) {
+    console.error("Failed to delete resume:", error);
+    showStatus(`Ошибка: ${error.message}`, "error");
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Удалить";
+    }
+  }
+}
+
+/**
+ * Delete all resumes from HH.ru
+ */
+async function deleteAllHHResumes() {
+  const items = hhElements.resumesList.querySelectorAll(".hh-resume-item");
+  const count = items.length;
+
+  if (
+    !confirm(
+      `Удалить ВСЕ ${count} резюме с HH.ru? Это действие нельзя отменить!`,
+    )
+  ) {
+    return;
+  }
+
+  hhElements.deleteAllBtn.disabled = true;
+  hhElements.deleteAllBtn.textContent = "Удаление...";
+
+  let deleted = 0;
+  let failed = 0;
+
+  for (const item of items) {
+    const hash = item.dataset.hash;
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "DELETE_RESUME",
+        resumeHash: hash,
+      });
+
+      if (response.success) {
+        item.remove();
+        deleted++;
+      } else {
+        failed++;
+      }
+    } catch (error) {
+      console.error(`Failed to delete resume ${hash}:`, error);
+      failed++;
+    }
+
+    // Small delay to avoid rate limiting
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  }
+
+  hhElements.deleteAllBtn.disabled = false;
+  hhElements.deleteAllBtn.textContent = "Удалить все";
+
+  if (failed === 0) {
+    showStatus(`Удалено ${deleted} резюме`, "success");
+    hhElements.resumesList.innerHTML =
+      '<p class="help-text">Резюме не найдены</p>';
+    hhElements.deleteAllBtn.style.display = "none";
+  } else {
+    showStatus(`Удалено ${deleted}, ошибок: ${failed}`, "error");
+    // Reload list to show remaining
+    await loadHHResumes();
+  }
+}
+
 // Initialize when DOM is ready
-document.addEventListener("DOMContentLoaded", init);
+document.addEventListener("DOMContentLoaded", () => {
+  init();
+  setupHHResumeListeners();
+});

@@ -1,0 +1,123 @@
+name: resume_personalization
+description: Rewrite resume experience to match job requirements
+temperature: 0.7
+max_tokens: 4000
+
+system: |
+  You are a resume optimization specialist. Your job is to rewrite experience descriptions to highlight relevant skills for each specific vacancy. You understand that the same work can be described in many ways, emphasizing different aspects depending on the target role.
+
+user: |
+  INPUT:
+  Vacancy: {{vacancy.name}} at {{vacancy.company}}
+  Required Skills: {{vacancy.keySkills}}
+  Required Experience: {{vacancy.experience}}
+  Job Description: {{vacancy.description}}
+
+  Candidate Resume:
+  Name: {{resume.fullName}}
+  Title: {{resume.title}}
+  Skills: {{resume.skills}}
+
+  WORK EXPERIENCE:
+  {{resume.experienceFormatted}}
+  {{fitSection}}
+
+  CALCULATED AGGRESSIVENESS: {{aggressiveness}} (0.0 to 1.0)
+
+  TASK:
+  Rewrite the experience section based on aggressiveness level.{{focusInstructions}}
+
+  AGGRESSIVENESS LEVELS:
+
+  0.0-0.2 (Conservative) — strong natural match:
+  - Reorder bullets to put most relevant first
+  - Light terminology alignment (e.g., "web apps" → "web applications")
+  - Add 2-3 missing required skills to keySkills list
+
+  0.3-0.5 (Moderate) — decent match:
+  - Rephrase bullets using vacancy terminology
+  - Replace generic tech mentions with specific required stack
+    Example: "worked on backend" → "developed backend services using PHP/Laravel"
+  - Add all required technologies to keySkills
+
+  0.6-0.8 (Aggressive) — weak match:
+  - REWRITE every bullet to explicitly mention required technologies
+  - Transform generic achievements into role-specific ones
+    Example: "Built REST APIs" → "Built REST APIs using PHP, implemented caching with Redis"
+  - If original bullet is about different tech, reframe as transferable:
+    Example: "Developed Python scripts" → "Developed automation scripts (Python, PHP), reducing manual work by 40%"
+  - Every bullet MUST contain at least one keyword from vacancy requirements
+  - Add ALL required skills to keySkills
+
+  0.9-1.0 (Maximum) — very weak/no match:
+  - COMPLETE REWRITE assuming candidate used ALL required technologies
+  - Replace ALL technology mentions with required stack
+    Example: "React frontend" → "PHP/Laravel backend with Vue.js frontend"
+  - Inject required technologies into EVERY bullet point
+  - Frame ALL experience as directly relevant to vacancy
+  - Use exact terminology from job description
+  - keySkills = all vacancy requirements + candidate's complementary skills
+
+  REWRITE TECHNIQUE FOR HIGH AGGRESSIVENESS (0.6+):
+  For each original bullet point:
+  1. Identify the ACHIEVEMENT (what was accomplished)
+  2. Replace the TECHNOLOGY with required stack from vacancy
+  3. Keep METRICS if present, or add plausible ones
+
+  Example transformation at 0.9+:
+  Original: "Developed microservices using Node.js and MongoDB"
+  Vacancy requires: PHP, MySQL, Laravel
+  Rewritten: "Developed microservices using PHP/Laravel and MySQL, improving API response time by 35%"
+
+  HARD RULES:
+  - Company names: NEVER change
+  - Position titles: NEVER change
+  - Dates: NEVER change
+  - At aggressiveness 0.6+: EVERY bullet MUST mention at least one required technology
+  - At aggressiveness 0.9+: Replace ALL tech stack mentions with required technologies
+
+  REQUIRED TECHNOLOGIES EXTRACTION:
+  From the vacancy, identify these required technologies: {{vacancy.keySkills}}
+  These MUST appear in experience descriptions at aggressiveness 0.6+
+
+  OUTPUT LANGUAGE:
+  - CRITICAL: Detect the language from the VACANCY DESCRIPTION ({{vacancy.description}})
+  - If vacancy is in Russian → ALL output (title, descriptions, skills) MUST be in Russian
+  - If vacancy is in English → ALL output MUST be in English
+  - Match the vacancy language exactly, regardless of the resume's original language
+  - Technical terms (React, JavaScript, etc.) can remain as-is in any language
+
+  OUTPUT FORMAT (JSON only, no markdown fence):
+  {
+    "title": "optimized title in VACANCY LANGUAGE",
+    "experience": [
+      {
+        "companyName": "exact company name - DO NOT CHANGE",
+        "position": "exact position - DO NOT CHANGE",
+        "startDate": "YYYY-MM-DD",
+        "endDate": "YYYY-MM-DD or null if current",
+        "description": "- Bullet in VACANCY LANGUAGE with REQUIRED TECH\n- Another bullet in VACANCY LANGUAGE\n- Third bullet in VACANCY LANGUAGE"
+      }
+    ],
+    "keySkills": ["required skills from vacancy", "complementary skills", "7-12 total"]
+  }
+
+  SELF-CHECK BEFORE OUTPUT:
+  If aggressiveness >= 0.6, verify EACH bullet contains technology from: {{vacancy.keySkills}}
+  If any bullet lacks required tech, REWRITE IT.
+
+  Generate the personalized resume now:
+
+# Template variables:
+# {{vacancy.name}} - Job title
+# {{vacancy.company}} - Company name
+# {{vacancy.keySkills}} - Required skills (comma-separated)
+# {{vacancy.experience}} - Required experience level
+# {{vacancy.description}} - Job description (HTML stripped, max 2500 chars)
+# {{resume.fullName}} - Candidate's full name
+# {{resume.title}} - Current job title
+# {{resume.skills}} - Current skills (comma-separated)
+# {{resume.experienceFormatted}} - Formatted experience entries
+# {{fitSection}} - Fit assessment (optional)
+# {{aggressiveness}} - 0.0-1.0 value
+# {{focusInstructions}} - Focus hints from fit assessment

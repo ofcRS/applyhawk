@@ -9,6 +9,7 @@ import {
   checkHHAuth,
   createCompleteResume,
   createResume,
+  deleteResume,
   getUserResumes,
   updateResumeCommon,
   updateResumeEducation,
@@ -84,8 +85,9 @@ async function handleMessage(message, sender) {
     case "GENERATE_COVER_LETTER":
       return await generateCoverLetter(
         message.vacancy,
-        message.resume,
+        message.personalized,
         message.fitAssessment,
+        message.aggressiveness,
       );
 
     case "GENERATE_PERSONALIZED_RESUME":
@@ -111,6 +113,9 @@ async function handleMessage(message, sender) {
 
     case "CREATE_RESUME":
       return await createResume(message.title, message.professionalRoleId);
+
+    case "DELETE_RESUME":
+      return await deleteResume(message.resumeHash);
 
     case "UPDATE_RESUME_EXPERIENCE":
       return await updateResumeExperience(

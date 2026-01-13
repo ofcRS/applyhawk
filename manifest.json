@@ -53,6 +53,10 @@
     {
       "resources": ["content-scripts/network-interceptor.js"],
       "matches": ["https://hh.ru/*", "https://*.hh.ru/*"]
+    },
+    {
+      "resources": ["prompts/*.yaml"],
+      "matches": ["<all_urls>"]
     }
   ]
 }

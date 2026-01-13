@@ -378,6 +378,47 @@
   font-size: 14px;
 }
 
+/* Low Fit Warning — Displayed in personalized column when fit score is too low */
+.low-fit-warning {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  text-align: center;
+  height: 100%;
+  min-height: 200px;
+}
+
+.low-fit-warning .warning-icon-large {
+  font-size: 48px;
+  margin-bottom: var(--space-md);
+}
+
+.low-fit-warning .warning-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--warning);
+  margin-bottom: var(--space-sm);
+}
+
+.low-fit-warning .warning-message {
+  color: var(--text-secondary);
+  margin-bottom: var(--space-md);
+  line-height: 1.5;
+}
+
+.low-fit-warning .warning-gaps {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: left;
+  max-width: 300px;
+}
+
+.low-fit-warning .warning-gaps div {
+  margin-bottom: var(--space-xs);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    Resume Comparison — Side-by-side with proper spacing
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -606,7 +647,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--space-2xl);
+  padding: var(--space-md);
   color: var(--text-muted);
   gap: var(--space-md);
 }

@@ -21,6 +21,8 @@ let filteredModels = [];
 let selectedModelId = null;
 let currentCategory = "recommended";
 let researchModeEnabled = false;
+let selectedResumeHash = null;
+let hhResumes = [];
 
 // DOM Elements
 const elements = {
@@ -51,6 +53,10 @@ const elements = {
   // Toast
   toastContainer: document.getElementById("toast-container"),
 
+  // Resumes
+  resumesList: document.getElementById("resumes-list"),
+  refreshResumesBtn: document.getElementById("refresh-resumes-btn"),
+
   // Research Mode
   researchToggle: document.getElementById("research-toggle"),
   researchStats: document.getElementById("research-stats"),
@@ -74,6 +80,11 @@ async function init() {
   elements.saveBtn.addEventListener("click", saveSettings);
   elements.settingsBtn.addEventListener("click", openOptionsPage);
 
+  // Resumes
+  elements.refreshResumesBtn?.addEventListener("click", () =>
+    loadHHResumes(true),
+  );
+
   // Category buttons
   document.querySelectorAll(".category-btn").forEach((btn) => {
     btn.addEventListener("click", () =>
@@ -96,6 +107,9 @@ async function init() {
 
   // Check HH.ru auth status (uses session cookies)
   await checkHHAuthStatus();
+
+  // Load HH resumes
+  await loadHHResumes();
 
   // Load models
   await loadModels();
@@ -408,6 +422,7 @@ async function loadSettings() {
 
     elements.apiKeyInput.value = settings.openRouterApiKey || "";
     selectedModelId = settings.preferredModel || "anthropic/claude-sonnet-4";
+    selectedResumeHash = settings.defaultHHResumeId || null;
   } catch (error) {
     console.error("Failed to load settings:", error);
   }
@@ -481,6 +496,125 @@ function escapeHtml(text) {
  */
 function sendMessage(message) {
   return chrome.runtime.sendMessage(message);
+}
+
+// ========== HH Resumes Functions ==========
+
+/**
+ * Load HH.ru resumes
+ */
+async function loadHHResumes(forceRefresh = false) {
+  if (forceRefresh) {
+    elements.refreshResumesBtn?.classList.add("spinning");
+  }
+
+  try {
+    const response = await sendMessage({ type: "GET_USER_RESUMES" });
+
+    if (!response.success) {
+      throw new Error(response.error || "Не удалось загрузить резюме");
+    }
+
+    hhResumes = response.resumes || [];
+    renderHHResumes();
+
+    if (forceRefresh && hhResumes.length > 0) {
+      showToast(`Загружено ${hhResumes.length} резюме`, "success");
+    }
+  } catch (error) {
+    console.error("Failed to load HH resumes:", error);
+    elements.resumesList.innerHTML = `
+      <div class="no-resumes">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 8v4M12 16h.01"></path>
+        </svg>
+        <span>Войдите на HH.ru</span>
+      </div>
+    `;
+  } finally {
+    elements.refreshResumesBtn?.classList.remove("spinning");
+  }
+}
+
+/**
+ * Render HH resumes list
+ */
+function renderHHResumes() {
+  if (!hhResumes || hhResumes.length === 0) {
+    elements.resumesList.innerHTML = `
+      <div class="no-resumes">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <span>Нет резюме</span>
+      </div>
+    `;
+    return;
+  }
+
+  const html = hhResumes
+    .map((resume) => {
+      const isSelected = resume.hash === selectedResumeHash;
+      return `
+        <div class="resume-item ${isSelected ? "selected" : ""}" data-hash="${escapeHtml(resume.hash)}">
+          <div class="resume-info">
+            <div class="resume-title">${escapeHtml(resume.title)}</div>
+            <div class="resume-meta">
+              <span class="resume-status ${resume.status}">${getStatusText(resume.status)}</span>
+            </div>
+          </div>
+          ${
+            isSelected
+              ? `
+            <svg class="resume-selected-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          `
+              : ""
+          }
+        </div>
+      `;
+    })
+    .join("");
+
+  elements.resumesList.innerHTML = html;
+
+  // Attach click handlers
+  elements.resumesList.querySelectorAll(".resume-item").forEach((item) => {
+    item.addEventListener("click", () => selectResume(item.dataset.hash));
+  });
+}
+
+/**
+ * Select a resume as default
+ */
+async function selectResume(hash) {
+  selectedResumeHash = hash;
+  renderHHResumes();
+
+  // Save to storage
+  try {
+    const settings = await getStoredSettings();
+    settings.defaultHHResumeId = hash;
+    await chrome.storage.local.set({ settings });
+  } catch (error) {
+    console.error("Failed to save selected resume:", error);
+  }
+}
+
+/**
+ * Get status text in Russian
+ */
+function getStatusText(status) {
+  const statusMap = {
+    published: "Активно",
+    hidden: "Скрыто",
+    draft: "Черновик",
+    unknown: "?",
+  };
+  return statusMap[status] || status;
 }
 
 // ========== Research Mode Functions ==========

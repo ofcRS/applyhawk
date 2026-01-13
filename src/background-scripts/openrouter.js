@@ -3,6 +3,7 @@
  * Handles AI-powered cover letter generation
  */
 
+import { buildPromptFromTemplate, interpolate } from "../lib/prompt-loader.js";
 import { getBaseResume, getSettings } from "../lib/storage.js";
 
 const OPENROUTER_API = "https://openrouter.ai/api/v1/chat/completions";
@@ -58,314 +59,110 @@ export function shouldSkipVacancy(
 }
 
 /**
- * Assess how well a candidate matches a job vacancy
+ * Make an API call to OpenRouter
  *
- * @param {Object} vacancy - Vacancy data
- * @param {Object} resume - Candidate's resume
- * @returns {Object} - Fit assessment with scores, gaps, and strengths
+ * @param {Object} options - API call options
+ * @returns {Promise<Object>} - API response data
  */
-export async function assessFitScore(vacancy, resume) {
-  const settings = await getSettings();
-
-  if (!settings.openRouterApiKey) {
-    throw new Error(
-      "OpenRouter API key not configured. Please set it in Options.",
-    );
-  }
-
-  const prompt = `You assess how well a candidate matches a job vacancy.
-
-INPUT:
-Vacancy: ${vacancy.name} at ${vacancy.company}
-Required Skills: ${vacancy.keySkills?.join(", ") || "Not specified"}
-Required Experience: ${vacancy.experience || "Not specified"}
-Job Description: ${stripHtml(vacancy.description).substring(0, 2000)}
-
-Candidate:
-Title: ${resume.title}
-Skills: ${resume.skills?.join(", ") || "Not specified"}
-Experience: ${formatExperience(resume.experience)}
-
-TASK:
-Analyze match quality across dimensions.
-
-SCORING CRITERIA:
-
-skillMatch (0.0-1.0):
-- 1.0: All required skills present with proven experience
-- 0.7: Most required skills, missing 1-2 minor ones
-- 0.5: Half of required skills present
-- 0.3: Few skills match, but related technologies exist
-- 0.0: No relevant skills
-
-experienceMatch (0.0-1.0):
-- 1.0: Same role, same industry, same scale
-- 0.7: Same role, different industry OR same industry, slightly different role
-- 0.5: Related role with transferable experience
-- 0.3: Different role but some relevant exposure
-- 0.0: Completely unrelated experience
-
-seniorityMatch (0.0-1.0):
-- 1.0: Exact seniority level match
-- 0.7: One level difference (Senior applying for Middle, or vice versa)
-- 0.4: Two levels difference
-- 0.0: Vast seniority gap
-
-stackOverlap (0.0-1.0):
-- Count: (matching technologies) / (required technologies)
-- Partial credit for similar tech (Vue→React = 0.5, Python→JavaScript = 0.3)
-
-OUTPUT FORMAT (JSON only):
-\`\`\`json
-{
-  "skillMatch": 0.0-1.0,
-  "experienceMatch": 0.0-1.0,
-  "seniorityMatch": 0.0-1.0,
-  "stackOverlap": 0.0-1.0,
-  "fitScore": 0.0-1.0,
-  "gaps": ["skill or experience gaps that will need addressing"],
-  "strengths": ["strongest matching points to emphasize"]
-}
-\`\`\`
-
-Note: fitScore is weighted average: skills 0.35, experience 0.30, seniority 0.20, stack 0.15
-
-Analyze now:`;
-
+async function callOpenRouter({
+  apiKey,
+  model,
+  messages,
+  temperature,
+  max_tokens,
+}) {
   const response = await fetch(OPENROUTER_API, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${settings.openRouterApiKey}`,
+      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
       "HTTP-Referer": "chrome-extension://hh-job-autoapply",
       "X-Title": "HH Job AutoApply",
     },
     body: JSON.stringify({
-      model: settings.preferredModel || DEFAULT_MODEL,
-      temperature: 0.3, // Low temperature for accurate assessment
-      max_tokens: 1000,
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
+      model: model || DEFAULT_MODEL,
+      temperature,
+      max_tokens,
+      messages,
     }),
   });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error?.message || "Failed to assess fit score");
-  }
-
-  const data = await response.json();
-  console.log(
-    "[OpenRouter] Fit assessment response:",
-    JSON.stringify(data, null, 2),
-  );
-
-  const content = data.choices?.[0]?.message?.content;
-
-  if (!content) {
-    // Log more details about the failed response
-    console.error("[OpenRouter] No content in response. Full response:", data);
-    if (data.error) {
-      throw new Error(
-        `Fit assessment API error: ${data.error.message || JSON.stringify(data.error)}`,
-      );
-    }
     throw new Error(
-      "No fit assessment generated - empty response from AI model",
+      error.error?.message || `API request failed: ${response.status}`,
     );
   }
 
+  return response.json();
+}
+
+/**
+ * Extract content from OpenRouter response
+ *
+ * @param {Object} data - API response
+ * @param {string} errorContext - Context for error messages
+ * @returns {string} - Response content
+ */
+function extractContent(data, errorContext) {
+  const content = data.choices?.[0]?.message?.content;
+
+  if (!content) {
+    console.error(
+      `[OpenRouter] No content in ${errorContext}. Full response:`,
+      data,
+    );
+    if (data.error) {
+      throw new Error(
+        `${errorContext} API error: ${data.error.message || JSON.stringify(data.error)}`,
+      );
+    }
+    throw new Error(
+      `No ${errorContext} generated - empty response from AI model`,
+    );
+  }
+
+  return content;
+}
+
+/**
+ * Parse JSON from AI response (handles markdown code blocks)
+ *
+ * @param {string} content - Response content
+ * @param {string} errorContext - Context for error messages
+ * @returns {Object} - Parsed JSON
+ */
+function parseJsonResponse(content, errorContext) {
   try {
     const jsonMatch =
       content.match(/```json\n?([\s\S]*?)\n?```/) ||
       content.match(/\{[\s\S]*\}/);
     const jsonStr = jsonMatch ? jsonMatch[1] || jsonMatch[0] : content;
-    const result = JSON.parse(jsonStr);
-
-    return {
-      success: true,
-      ...result,
-      model: data.model,
-      usage: data.usage,
-    };
+    return JSON.parse(jsonStr);
   } catch (parseError) {
     console.error(
-      "[OpenRouter] Failed to parse fit assessment JSON:",
+      `[OpenRouter] Failed to parse ${errorContext} JSON:`,
       parseError,
       content,
     );
-    throw new Error("Failed to parse fit assessment. Please try again.");
+    throw new Error(`Failed to parse ${errorContext}. Please try again.`);
   }
 }
 
 /**
- * Generate a cover letter for a specific vacancy
- *
- * @param {Object} vacancy - Vacancy data
- * @param {Object} resumeOverride - Resume to use (optional)
- * @param {Object} fitAssessment - Fit assessment from assessFitScore (optional)
- * @returns {Object} - { coverLetter, model, usage }
+ * Strip HTML tags from text
  */
-export async function generateCoverLetter(
-  vacancy,
-  resumeOverride = null,
-  fitAssessment = null,
-) {
-  const settings = await getSettings();
-  const resume = resumeOverride || (await getBaseResume());
-
-  if (!settings.openRouterApiKey) {
-    throw new Error(
-      "OpenRouter API key not configured. Please set it in Options.",
-    );
-  }
-
-  if (!resume) {
-    throw new Error(
-      "Resume not configured. Please fill in your resume in Options.",
-    );
-  }
-
-  const prompt = await buildPrompt(
-    vacancy,
-    resume,
-    settings.coverLetterTemplate,
-    fitAssessment,
-  );
-
-  const response = await fetch(OPENROUTER_API, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${settings.openRouterApiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "chrome-extension://hh-job-autoapply",
-      "X-Title": "HH Job AutoApply",
-    },
-    body: JSON.stringify({
-      model: settings.preferredModel || DEFAULT_MODEL,
-      temperature: 0.8,
-      max_tokens: 1000,
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error?.message || "Failed to generate cover letter");
-  }
-
-  const data = await response.json();
-  const coverLetter = data.choices?.[0]?.message?.content;
-
-  if (!coverLetter) {
-    throw new Error("No cover letter generated");
-  }
-
-  return {
-    success: true,
-    coverLetter: coverLetter.trim(),
-    model: data.model,
-    usage: data.usage,
-  };
-}
-
-/**
- * Build the prompt for cover letter generation
- */
-async function buildPrompt(
-  vacancy,
-  resume,
-  customTemplate = null,
-  fitAssessment = null,
-) {
-  // Get settings for contact info
-  const settings = await getSettings();
-  const contactTelegram =
-    settings.contactTelegram || resume.contacts?.telegram || "";
-  const contactEmail = settings.contactEmail || resume.contacts?.email || "";
-
-  // Use custom template if provided
-  if (customTemplate) {
-    return interpolateTemplate(customTemplate, vacancy, resume);
-  }
-
-  const fitSection = fitAssessment
-    ? `
-FIT ASSESSMENT:
-fitScore: ${fitAssessment.fitScore?.toFixed(2) || "N/A"}
-Strengths: ${fitAssessment.strengths?.join(", ") || "None identified"}
-Gaps: ${fitAssessment.gaps?.join(", ") || "None identified"}`
-    : "";
-
-  const strategySection = `
-STRATEGY:
-- Present candidate as ideal fit for this role
-- Mention experience with key required skills: ${vacancy.keySkills?.slice(0, 4).join(", ") || "required technologies"}
-- Be confident and specific`;
-
-  // Default prompt template
-  return `You write short cover letters for job applications.
-
-INPUT:
-Vacancy: ${vacancy.name} at ${vacancy.company}
-Description: ${stripHtml(vacancy.description).substring(0, 2000)}
-Key Skills: ${vacancy.keySkills?.join(", ") || "Not specified"}
-
-Candidate: ${resume.fullName}, ${resume.title}
-Experience: ${formatExperience(resume.experience)}
-Skills: ${resume.skills?.join(", ") || "Not specified"}
-${fitSection}
-
-Contacts: ${contactTelegram}${contactTelegram && contactEmail ? ", " : ""}${contactEmail}
-
-TASK:
-Write a cover letter of 3-4 sentences.
-${strategySection}
-
-STRUCTURE:
-1. First sentence: Specific interest in this company/product (not generic)
-2. Middle (1-2 sentences): Best matching achievements${fitAssessment?.strengths ? ` from: ${fitAssessment.strengths.join(", ")}` : ""}. Include numbers.
-3. Last sentence: Contacts
-
-SPECIAL REQUIREMENTS CHECK:
-Scan the job description for application instructions:
-- "в отклике укажите", "напишите", "приложите", "ответьте", "code word", "mention"
-If found → MUST include in letter
-
-BANNED (RU): "В современном мире", "Являясь опытным специалистом", "Ваша компания", "впечатляет", "с большим интересом", "уникальная возможность"
-BANNED (EN): "I am excited", "I believe I would be a great fit", "passionate about", "unique opportunity", "I am confident"
-
-OUTPUT LANGUAGE: Match the job description language (Russian if job is in Russian)
-OUTPUT: Letter text only. No greeting, no signature.`;
-}
-
-/**
- * Interpolate custom template with vacancy and resume data
- */
-function interpolateTemplate(template, vacancy, resume) {
-  return template
-    .replace(/\{\{vacancy\.name\}\}/g, vacancy.name || "")
-    .replace(/\{\{vacancy\.company\}\}/g, vacancy.company || "")
-    .replace(
-      /\{\{vacancy\.description\}\}/g,
-      stripHtml(vacancy.description) || "",
-    )
-    .replace(/\{\{vacancy\.keySkills\}\}/g, vacancy.keySkills?.join(", ") || "")
-    .replace(/\{\{vacancy\.experience\}\}/g, vacancy.experience || "")
-    .replace(/\{\{resume\.fullName\}\}/g, resume.fullName || "")
-    .replace(/\{\{resume\.title\}\}/g, resume.title || "")
-    .replace(/\{\{resume\.summary\}\}/g, resume.summary || "")
-    .replace(/\{\{resume\.experience\}\}/g, formatExperience(resume.experience))
-    .replace(/\{\{resume\.skills\}\}/g, resume.skills?.join(", ") || "");
+function stripHtml(html) {
+  if (!html) return "";
+  return html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /**
@@ -389,19 +186,287 @@ function formatExperience(experience) {
 }
 
 /**
- * Strip HTML tags from text
+ * Format experience for resume personalization prompt
+ * Uses language-neutral formatting to avoid biasing the AI output language
  */
-function stripHtml(html) {
-  if (!html) return "";
-  return html
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/\s+/g, " ")
-    .trim();
+function formatExperienceForPersonalization(experience) {
+  return experience
+    .map((exp, i) => {
+      return `[${i + 1}] ${exp.position} @ ${exp.company}
+${exp.startDate} — ${exp.endDate || "..."}
+---
+${exp.description}
+${exp.achievements?.length ? `+ ${exp.achievements.join("; ")}` : ""}`;
+    })
+    .join("\n\n");
+}
+
+/**
+ * Assess how well a candidate matches a job vacancy
+ *
+ * @param {Object} vacancy - Vacancy data
+ * @param {Object} resume - Candidate's resume
+ * @returns {Object} - Fit assessment with scores, gaps, and strengths
+ */
+export async function assessFitScore(vacancy, resume) {
+  const settings = await getSettings();
+
+  if (!settings.openRouterApiKey) {
+    throw new Error(
+      "OpenRouter API key not configured. Please set it in Options.",
+    );
+  }
+
+  const promptTemplate = await buildPromptFromTemplate("fit-assessment", {
+    vacancy: {
+      name: vacancy.name,
+      company: vacancy.company,
+      keySkills: vacancy.keySkills?.join(", ") || "Not specified",
+      experience: vacancy.experience || "Not specified",
+      description: stripHtml(vacancy.description).substring(0, 2000),
+    },
+    resume: {
+      title: resume.title,
+      skills: resume.skills?.join(", ") || "Not specified",
+      experience: formatExperience(resume.experience),
+    },
+  });
+
+  const data = await callOpenRouter({
+    apiKey: settings.openRouterApiKey,
+    model: settings.preferredModel,
+    messages: [{ role: "user", content: promptTemplate.user }],
+    temperature: promptTemplate.temperature,
+    max_tokens: promptTemplate.max_tokens,
+  });
+
+  console.log(
+    "[OpenRouter] Fit assessment response:",
+    JSON.stringify(data, null, 2),
+  );
+
+  const content = extractContent(data, "fit assessment");
+  const result = parseJsonResponse(content, "fit assessment");
+
+  return {
+    success: true,
+    ...result,
+    model: data.model,
+    usage: data.usage,
+  };
+}
+
+/**
+ * Format personalized experience for cover letter prompt
+ */
+function formatExperienceForCoverLetter(experience) {
+  if (!experience?.length) return "No experience provided";
+
+  return experience
+    .map((exp) => {
+      const period = exp.endDate
+        ? `${exp.startDate} — ${exp.endDate}`
+        : `${exp.startDate} — present`;
+      return `${exp.position} at ${exp.companyName} (${period})
+${exp.description || ""}`;
+    })
+    .join("\n\n");
+}
+
+/**
+ * Generate a cover letter for a specific vacancy
+ *
+ * @param {Object} vacancy - Vacancy data
+ * @param {Object} personalizedResume - Personalized resume data (title, keySkills, experience)
+ * @param {Object} fitAssessment - Fit assessment from assessFitScore (optional)
+ * @param {number} aggressiveness - Aggressiveness level 0.0-1.0 (affects cover letter tone)
+ * @returns {Object} - { coverLetter, model, usage }
+ */
+export async function generateCoverLetter(
+  vacancy,
+  personalizedResume = null,
+  fitAssessment = null,
+  aggressiveness = 0.5,
+) {
+  const settings = await getSettings();
+  const baseResume = await getBaseResume();
+
+  if (!settings.openRouterApiKey) {
+    throw new Error(
+      "OpenRouter API key not configured. Please set it in Options.",
+    );
+  }
+
+  if (!baseResume) {
+    throw new Error(
+      "Resume not configured. Please fill in your resume in Options.",
+    );
+  }
+
+  // Build contacts string
+  const contactTelegram =
+    settings.contactTelegram || baseResume.contacts?.telegram || "";
+  const contactEmail =
+    settings.contactEmail || baseResume.contacts?.email || "";
+  const contacts = [contactTelegram, contactEmail].filter(Boolean).join(", ");
+
+  // Build fit section
+  const fitSection = fitAssessment
+    ? `
+FIT ASSESSMENT:
+fitScore: ${fitAssessment.fitScore?.toFixed(2) || "N/A"}
+Strengths: ${fitAssessment.strengths?.join(", ") || "None identified"}
+Gaps: ${fitAssessment.gaps?.join(", ") || "None identified"}`
+    : "";
+
+  // Build strategy section
+  const strategySection = `
+STRATEGY:
+- Present candidate as ideal fit for this role
+- Mention experience with key required skills: ${vacancy.keySkills?.slice(0, 4).join(", ") || "required technologies"}
+- Be confident and specific`;
+
+  // Build strengths hint for structure
+  const strengthsHint = fitAssessment?.strengths
+    ? ` from: ${fitAssessment.strengths.join(", ")}`
+    : "";
+
+  // Format personalized experience (or fall back to base resume)
+  const personalizedExperienceFormatted = personalizedResume?.experience?.length
+    ? formatExperienceForCoverLetter(personalizedResume.experience)
+    : formatExperience(baseResume.experience);
+
+  const personalizedSkills = personalizedResume?.keySkills?.length
+    ? personalizedResume.keySkills
+    : baseResume.skills || [];
+
+  const personalizedTitle = personalizedResume?.title || baseResume.title || "";
+
+  // Check for custom template
+  if (settings.coverLetterTemplate) {
+    // Use custom template with simple interpolation
+    // For custom templates, we pass personalized data in the resume object
+    const customPrompt = interpolate(settings.coverLetterTemplate, {
+      vacancy: {
+        name: vacancy.name || "",
+        company: vacancy.company || "",
+        description: stripHtml(vacancy.description) || "",
+        keySkills: vacancy.keySkills?.join(", ") || "",
+        experience: vacancy.experience || "",
+      },
+      resume: {
+        fullName: baseResume.fullName || "",
+        title: personalizedTitle,
+        summary: baseResume.summary || "",
+        experience: personalizedExperienceFormatted,
+        skills: personalizedSkills.join(", "),
+      },
+      personalized: {
+        title: personalizedTitle,
+        keySkills: JSON.stringify(personalizedSkills),
+        experienceFormatted: personalizedExperienceFormatted,
+      },
+      aggressiveness: aggressiveness.toFixed(2),
+    });
+
+    const data = await callOpenRouter({
+      apiKey: settings.openRouterApiKey,
+      model: settings.preferredModel,
+      messages: [{ role: "user", content: customPrompt }],
+      temperature: 0.8,
+      max_tokens: 1000,
+    });
+
+    const coverLetter = extractContent(data, "cover letter");
+
+    return {
+      success: true,
+      coverLetter: coverLetter.trim(),
+      model: data.model,
+      usage: data.usage,
+    };
+  }
+
+  // Use YAML template
+  const promptTemplate = await buildPromptFromTemplate("cover-letter", {
+    vacancy: {
+      name: vacancy.name,
+      company: vacancy.company,
+      description: stripHtml(vacancy.description).substring(0, 2000),
+      keySkills: vacancy.keySkills?.join(", ") || "Not specified",
+    },
+    // Keep resume for backward compatibility, but prioritize personalized data
+    resume: {
+      fullName: baseResume.fullName,
+      title: personalizedTitle,
+      experience: personalizedExperienceFormatted,
+      skills: personalizedSkills.join(", ") || "Not specified",
+    },
+    // NEW: Personalized resume data (explicit)
+    personalized: {
+      title: personalizedTitle,
+      keySkills: JSON.stringify(personalizedSkills),
+      experienceFormatted: personalizedExperienceFormatted,
+    },
+    // NEW: Aggressiveness level
+    aggressiveness: aggressiveness.toFixed(2),
+    fitSection,
+    contacts,
+    salaryExpectation: settings.salaryExpectation || "обсуждается",
+    strategySection,
+    strengthsHint,
+  });
+
+  const data = await callOpenRouter({
+    apiKey: settings.openRouterApiKey,
+    model: settings.preferredModel,
+    messages: [{ role: "user", content: promptTemplate.user }],
+    temperature: promptTemplate.temperature,
+    max_tokens: promptTemplate.max_tokens,
+  });
+
+  const rawContent = extractContent(data, "cover letter");
+
+  // Parse JSON response and extract cover_letter field
+  let coverLetter;
+  let extraction = null;
+
+  try {
+    // Try to parse as JSON
+    const parsed = JSON.parse(rawContent);
+    coverLetter = parsed.cover_letter;
+    extraction = parsed.extraction;
+
+    if (!coverLetter) {
+      throw new Error("No cover_letter field in response");
+    }
+  } catch (parseError) {
+    // Fallback: try to extract JSON from markdown code blocks
+    const jsonMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[1].trim());
+        coverLetter = parsed.cover_letter;
+        extraction = parsed.extraction;
+      } catch {
+        // Final fallback: use raw content as-is (old behavior)
+        console.warn("[OpenRouter] Could not parse JSON, using raw content");
+        coverLetter = rawContent;
+      }
+    } else {
+      // No JSON found, use raw content
+      console.warn("[OpenRouter] No JSON in response, using raw content");
+      coverLetter = rawContent;
+    }
+  }
+
+  return {
+    success: true,
+    coverLetter: coverLetter.trim(),
+    extraction, // For debugging/validation
+    model: data.model,
+    usage: data.usage,
+  };
 }
 
 /**
@@ -443,75 +508,67 @@ export async function generatePersonalizedResume(
         )
       : 0.5);
 
-  const prompt = buildResumePrompt(
-    baseResume,
-    vacancy,
-    fitAssessment,
-    effectiveAggressiveness,
+  // Build fit section
+  const fitSection = fitAssessment
+    ? `
+FIT ASSESSMENT:
+fitScore: ${fitAssessment.fitScore?.toFixed(2) || "N/A"}
+Gaps: ${fitAssessment.gaps?.join(", ") || "None identified"}
+Strengths: ${fitAssessment.strengths?.join(", ") || "None identified"}`
+    : "";
+
+  // Build focus instructions
+  const focusInstructions = fitAssessment
+    ? ` Focus on:
+- Highlighting: ${fitAssessment.strengths?.join(", ") || "relevant experience"}
+- Addressing gaps: ${fitAssessment.gaps?.join(", ") || "none"}`
+    : "";
+
+  const promptTemplate = await buildPromptFromTemplate(
+    "resume-personalization",
+    {
+      vacancy: {
+        name: vacancy.name,
+        company: vacancy.company,
+        keySkills: vacancy.keySkills?.join(", ") || "Not specified",
+        experience: vacancy.experience || "Not specified",
+        description: stripHtml(vacancy.description).substring(0, 2500),
+      },
+      resume: {
+        fullName: baseResume.fullName,
+        title: baseResume.title,
+        skills: baseResume.skills?.join(", ") || "Not specified",
+        experienceFormatted: formatExperienceForPersonalization(
+          baseResume.experience,
+        ),
+      },
+      fitSection,
+      aggressiveness: effectiveAggressiveness.toFixed(2),
+      focusInstructions,
+    },
   );
 
-  const response = await fetch(OPENROUTER_API, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${settings.openRouterApiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "chrome-extension://hh-job-autoapply",
-      "X-Title": "HH Job AutoApply",
-    },
-    body: JSON.stringify({
-      model: settings.preferredModel || DEFAULT_MODEL,
-      temperature: 0.7,
-      max_tokens: 4000,
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-    }),
+  const data = await callOpenRouter({
+    apiKey: settings.openRouterApiKey,
+    model: settings.preferredModel,
+    messages: [{ role: "user", content: promptTemplate.user }],
+    temperature: promptTemplate.temperature,
+    max_tokens: promptTemplate.max_tokens,
   });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(
-      error.error?.message || "Failed to generate personalized resume",
-    );
-  }
+  const content = extractContent(data, "resume");
+  const result = parseJsonResponse(content, "generated resume");
 
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
-
-  if (!content) {
-    throw new Error("No resume generated");
-  }
-
-  // Parse the JSON response
-  try {
-    // Extract JSON from the response (it might be wrapped in markdown code blocks)
-    const jsonMatch =
-      content.match(/```json\n?([\s\S]*?)\n?```/) ||
-      content.match(/\{[\s\S]*\}/);
-    const jsonStr = jsonMatch ? jsonMatch[1] || jsonMatch[0] : content;
-    const result = JSON.parse(jsonStr);
-
-    return {
-      success: true,
-      experience: result.experience || [],
-      keySkills: result.keySkills || [],
-      title: result.title || baseResume.title,
-      appliedAggressiveness: effectiveAggressiveness,
-      originalFitScore: fitAssessment?.fitScore ?? null,
-      model: data.model,
-      usage: data.usage,
-    };
-  } catch (parseError) {
-    console.error(
-      "[OpenRouter] Failed to parse resume JSON:",
-      parseError,
-      content,
-    );
-    throw new Error("Failed to parse generated resume. Please try again.");
-  }
+  return {
+    success: true,
+    experience: result.experience || [],
+    keySkills: result.keySkills || [],
+    title: result.title || baseResume.title,
+    appliedAggressiveness: effectiveAggressiveness,
+    originalFitScore: fitAssessment?.fitScore ?? null,
+    model: data.model,
+    usage: data.usage,
+  };
 }
 
 /**
@@ -529,217 +586,27 @@ export async function parseResumePDF(pdfText) {
     );
   }
 
-  const prompt = `You are an expert resume parser. Extract structured data from this resume text.
-
-RESUME TEXT:
-${pdfText}
-
-OUTPUT FORMAT (JSON only, no explanation):
-\`\`\`json
-{
-  "fullName": "Full name of the person",
-  "title": "Desired job title / current profession",
-  "summary": "Professional summary or about section (if present, otherwise empty string)",
-  "experience": [
-    {
-      "company": "Company name",
-      "position": "Job title",
-      "startDate": "YYYY-MM-DD format (e.g., 2023-01-15)",
-      "endDate": "YYYY-MM-DD format or null if current job (e.g., 2024-06-30)",
-      "description": "Job description and responsibilities",
-      "achievements": ["Achievement 1", "Achievement 2"]
-    }
-  ],
-  "education": [
-    {
-      "institution": "University/School name",
-      "degree": "Degree type and field",
-      "year": 2023
-    }
-  ],
-  "skills": ["Skill1", "Skill2", "Skill3"],
-  "contacts": {
-    "email": "email@example.com",
-    "phone": "+1234567890",
-    "telegram": "@username or empty string"
-  }
-}
-\`\`\`
-
-REQUIREMENTS:
-1. Extract ALL work experience entries in chronological order (most recent first)
-2. Parse dates carefully - convert "Feb 2025" to "2025-02-01", "Present" to null
-3. Skills should be individual items, not grouped
-4. If a field is not found in the resume, use empty string or empty array
-5. For achievements, extract quantifiable results if mentioned in the job description
-6. Return ONLY the JSON, no additional text
-
-Parse the resume now:`;
-
-  const response = await fetch(OPENROUTER_API, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${settings.openRouterApiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "chrome-extension://hh-job-autoapply",
-      "X-Title": "HH Job AutoApply",
-    },
-    body: JSON.stringify({
-      model: settings.preferredModel || DEFAULT_MODEL,
-      temperature: 0.3, // Lower temperature for more accurate parsing
-      max_tokens: 4000,
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-    }),
+  const promptTemplate = await buildPromptFromTemplate("pdf-parser", {
+    pdfText,
   });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error?.message || "Failed to parse resume");
-  }
+  const data = await callOpenRouter({
+    apiKey: settings.openRouterApiKey,
+    model: settings.preferredModel,
+    messages: [{ role: "user", content: promptTemplate.user }],
+    temperature: promptTemplate.temperature,
+    max_tokens: promptTemplate.max_tokens,
+  });
 
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
+  const content = extractContent(data, "resume parsing");
+  const result = parseJsonResponse(content, "AI response");
 
-  if (!content) {
-    throw new Error("No response from AI");
-  }
-
-  // Parse the JSON response
-  try {
-    const jsonMatch =
-      content.match(/```json\n?([\s\S]*?)\n?```/) ||
-      content.match(/\{[\s\S]*\}/);
-    const jsonStr = jsonMatch ? jsonMatch[1] || jsonMatch[0] : content;
-    const result = JSON.parse(jsonStr);
-
-    return {
-      success: true,
-      resume: result,
-      model: data.model,
-      usage: data.usage,
-    };
-  } catch (parseError) {
-    console.error(
-      "[OpenRouter] Failed to parse resume JSON:",
-      parseError,
-      content,
-    );
-    throw new Error("Failed to parse AI response. Please try again.");
-  }
-}
-
-/**
- * Build prompt for personalized resume generation with aggressiveness
- */
-function buildResumePrompt(
-  baseResume,
-  vacancy,
-  fitAssessment = null,
-  aggressiveness = 0.5,
-) {
-  const baseExperience = baseResume.experience
-    .map((exp, i) => {
-      return `[${i + 1}] ${exp.position} at ${exp.company}
-Start: ${exp.startDate}
-End: ${exp.endDate || "Present"}
-Description:
-${exp.description}
-Achievements: ${exp.achievements?.join("; ") || "None listed"}`;
-    })
-    .join("\n\n");
-
-  const fitSection = fitAssessment
-    ? `
-FIT ASSESSMENT:
-fitScore: ${fitAssessment.fitScore?.toFixed(2) || "N/A"}
-Gaps: ${fitAssessment.gaps?.join(", ") || "None identified"}
-Strengths: ${fitAssessment.strengths?.join(", ") || "None identified"}`
-    : "";
-
-  return `You are a resume optimization specialist.
-
-INPUT:
-Vacancy: ${vacancy.name} at ${vacancy.company}
-Required Skills: ${vacancy.keySkills?.join(", ") || "Not specified"}
-Required Experience: ${vacancy.experience || "Not specified"}
-Job Description: ${stripHtml(vacancy.description).substring(0, 2500)}
-
-Candidate Resume:
-Name: ${baseResume.fullName}
-Title: ${baseResume.title}
-Skills: ${baseResume.skills?.join(", ") || "Not specified"}
-
-WORK EXPERIENCE:
-${baseExperience}
-${fitSection}
-
-CALCULATED AGGRESSIVENESS: ${aggressiveness.toFixed(2)} (0.0 to 1.0)
-
-TASK:
-Rewrite experience using the aggressiveness level.${
-    fitAssessment
-      ? ` Focus on:
-- Highlighting: ${fitAssessment.strengths?.join(", ") || "relevant experience"}
-- Addressing gaps: ${fitAssessment.gaps?.join(", ") || "none"}`
-      : ""
-  }
-
-AGGRESSIVENESS BEHAVIOR:
-
-0.0-0.2 (Conservative) — strong match:
-- Reorder bullets, most relevant first
-- Light terminology alignment
-- Add missing required skills to keySkills
-
-0.3-0.5 (Moderate) — decent match:
-- Active rephrasing toward vacancy language
-- Add required skills to experience descriptions
-- Add all required technologies to keySkills
-
-0.6-0.8 (Aggressive) — weak match:
-- Reframe all experience through vacancy lens
-- Every bullet should connect to requirements
-- Add ALL required skills to experience descriptions
-- Add ALL required technologies to keySkills
-- Highlight learning speed, adaptability
-
-0.9-1.0 (Maximum) — very weak match:
-- Complete rewrite to match vacancy perfectly
-- Add ALL required skills from vacancy to keySkills
-- Weave ALL required technologies into experience descriptions naturally
-- Present candidate as ideal fit for this specific role
-- Every experience should demonstrate relevant skills from vacancy
-
-CONSTRAINTS:
-- Company names, positions, dates: NEVER change
-- Write compelling, believable descriptions that match vacancy requirements
-- keySkills MUST include all skills mentioned in vacancy requirements
-
-OUTPUT LANGUAGE: Match the job description language (Russian if job is in Russian)
-
-OUTPUT FORMAT (JSON only):
-\`\`\`json
-{
-  "title": "optimized title matching vacancy",
-  "experience": [
-    {
-      "companyName": "exact company name",
-      "position": "exact position",
-      "startDate": "YYYY-MM-DD (e.g., 2024-01-15)",
-      "endDate": "YYYY-MM-DD or null if current (e.g., 2025-06-30)",
-      "description": "- Bullet point 1\\n- Bullet point 2\\n- Bullet point 3"
-    }
-  ],
-  "keySkills": ["ordered by relevance, 7-12 items"]
-}
-\`\`\`
-
-Generate the personalized resume now:`;
+  return {
+    success: true,
+    resume: result,
+    model: data.model,
+    usage: data.usage,
+  };
 }
 
 /**
@@ -758,69 +625,29 @@ export async function generateResumeTitle(vacancy, personalizedResume) {
     );
   }
 
-  const prompt = `Generate a professional, catchy resume title (max 50 characters) for HH.ru job application.
-
-TARGET JOB: ${vacancy.name} at ${vacancy.company}
-
-CANDIDATE:
-Top Skills: ${personalizedResume.keySkills?.slice(0, 5).join(", ") || "Not specified"}
-Recent Position: ${personalizedResume.experience?.[0]?.position || "Not specified"} at ${personalizedResume.experience?.[0]?.companyName || ""}
-
-REQUIREMENTS:
-- Russian language
-- Professional but memorable
-- Highlight main specialization
-- Max 50 characters
-- NO company name
-- NO "CV для", "Резюме для", "Отклик на"
-- Focus on candidate's expertise, not the target job
-
-GOOD EXAMPLES:
-- "Senior Python Developer | ML & Data"
-- "Full-Stack разработчик (React + Node)"
-- "Backend Architect • High-Load Systems"
-- "Product Manager | B2B SaaS"
-- "DevOps Engineer | Kubernetes & AWS"
-
-BAD EXAMPLES:
-- "CV для Яндекс" (mentions company)
-- "Резюме Frontend Developer" (boring, has "Резюме")
-- "Специалист" (too generic)
-
-OUTPUT: Return ONLY the title text, nothing else.`;
-
-  const response = await fetch(OPENROUTER_API, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${settings.openRouterApiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "chrome-extension://hh-job-autoapply",
-      "X-Title": "HH Job AutoApply",
+  const promptTemplate = await buildPromptFromTemplate("resume-title", {
+    vacancy: {
+      name: vacancy.name,
+      company: vacancy.company,
     },
-    body: JSON.stringify({
-      model: settings.preferredModel || DEFAULT_MODEL,
-      temperature: 0.8, // Higher temperature for creative titles
-      max_tokens: 60,
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-    }),
+    resume: {
+      keySkills:
+        personalizedResume.keySkills?.slice(0, 5).join(", ") || "Not specified",
+      recentPosition:
+        personalizedResume.experience?.[0]?.position || "Not specified",
+      recentCompany: personalizedResume.experience?.[0]?.companyName || "",
+    },
   });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error?.message || "Failed to generate resume title");
-  }
+  const data = await callOpenRouter({
+    apiKey: settings.openRouterApiKey,
+    model: settings.preferredModel,
+    messages: [{ role: "user", content: promptTemplate.user }],
+    temperature: promptTemplate.temperature,
+    max_tokens: promptTemplate.max_tokens,
+  });
 
-  const data = await response.json();
-  const title = data.choices?.[0]?.message?.content?.trim();
-
-  if (!title) {
-    throw new Error("No title generated");
-  }
+  const title = extractContent(data, "resume title").trim();
 
   // Clean up the title (remove quotes if AI wrapped it)
   const cleanTitle = title.replace(/^["']|["']$/g, "").trim();

@@ -1,6 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <rect width="128" height="128" rx="24" fill="#667eea"/>
-  <path d="M40 48h48M40 64h32M40 80h40" stroke="white" stroke-width="8" stroke-linecap="round"/>
-  <circle cx="88" cy="80" r="16" fill="#4ade80" stroke="white" stroke-width="4"/>
-  <path d="M84 80l4 4 8-8" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Dark background with rounded corners -->
+  <rect width="128" height="128" rx="24" fill="#18181b"/>
+
+  <!-- Red accent corner -->
+  <path d="M104 0h24v24a24 24 0 0 1-24-24z" fill="#ef4444"/>
+
+  <!-- Document/Resume icon -->
+  <rect x="32" y="24" width="64" height="80" rx="8" fill="#27272a" stroke="#3f3f46" stroke-width="2"/>
+
+  <!-- Document lines (resume content) -->
+  <rect x="44" y="40" width="40" height="4" rx="2" fill="#71717a"/>
+  <rect x="44" y="52" width="32" height="4" rx="2" fill="#52525b"/>
+  <rect x="44" y="64" width="36" height="4" rx="2" fill="#52525b"/>
+  <rect x="44" y="76" width="28" height="4" rx="2" fill="#52525b"/>
+
+  <!-- Green checkmark circle (auto-apply indicator) -->
+  <circle cx="88" cy="88" r="20" fill="#22c55e"/>
+  <path d="M80 88l5 5 10-10" stroke="white" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

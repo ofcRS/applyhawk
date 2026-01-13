@@ -1,0 +1,46 @@
+name: resume_title_generation
+description: Generate a professional, catchy resume title
+temperature: 0.8
+max_tokens: 60
+
+system: |
+  You generate professional, memorable resume titles.
+
+user: |
+  Generate a professional, catchy resume title (max 50 characters) for HH.ru job application.
+
+  TARGET JOB: {{vacancy.name}} at {{vacancy.company}}
+
+  CANDIDATE:
+  Top Skills: {{resume.keySkills}}
+  Recent Position: {{resume.recentPosition}} at {{resume.recentCompany}}
+
+  REQUIREMENTS:
+  - Russian language
+  - Professional but memorable
+  - Highlight main specialization
+  - Max 50 characters
+  - NO company name
+  - NO "CV для", "Резюме для", "Отклик на"
+  - Focus on candidate's expertise, not the target job
+
+  GOOD EXAMPLES:
+  - "Senior Python Developer | ML & Data"
+  - "Full-Stack разработчик (React + Node)"
+  - "Backend Architect • High-Load Systems"
+  - "Product Manager | B2B SaaS"
+  - "DevOps Engineer | Kubernetes & AWS"
+
+  BAD EXAMPLES:
+  - "CV для Яндекс" (mentions company)
+  - "Резюме Frontend Developer" (boring, has "Резюме")
+  - "Специалист" (too generic)
+
+  OUTPUT: Return ONLY the title text, nothing else.
+
+# Template variables:
+# {{vacancy.name}} - Target job title
+# {{vacancy.company}} - Target company name
+# {{resume.keySkills}} - Top 5 skills (comma-separated)
+# {{resume.recentPosition}} - Most recent job title
+# {{resume.recentCompany}} - Most recent company name
