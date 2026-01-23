@@ -2,6 +2,10 @@
 
 AI-powered Chrome extension for automating job applications on HH.ru (HeadHunter) with personalized resumes and cover letters.
 
+<img width="720"  alt="image" src="https://github.com/user-attachments/assets/f8b2358b-2cc9-4d14-8ad2-a8186334e277" />
+<img width="720" alt="image" src="https://github.com/user-attachments/assets/18695e9e-b8e2-4ef0-a00a-1e4cef9fe587" />
+
+
 ![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-4285F4?logo=googlechrome&logoColor=white)
 ![Manifest V3](https://img.shields.io/badge/Manifest-V3-00C853)
 ![License](https://img.shields.io/badge/License-MIT-blue)
