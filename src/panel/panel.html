@@ -70,6 +70,83 @@
       </div>
     </section>
 
+    <!-- Universal CV Section -->
+    <section id="universal-section" class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <path d="M12 18v-6"/>
+            <path d="M9 15l3 3 3-3"/>
+          </svg>
+          PDF Resume
+        </div>
+      </div>
+      <p class="card-description">Create PDF resume for any job description</p>
+
+      <div class="form-group">
+        <textarea
+          id="job-description-input"
+          class="input job-description-textarea"
+          placeholder="Paste job description here..."
+          rows="5"
+        ></textarea>
+      </div>
+
+      <!-- Aggressiveness Settings -->
+      <div class="aggressiveness-settings">
+        <div class="aggressiveness-header">
+          <label for="pdf-aggressiveness">Aggressiveness: <span id="pdf-aggressiveness-value">50%</span></label>
+          <button id="aggressiveness-info-btn" class="btn-icon btn-xs" title="What is aggressiveness?">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </button>
+        </div>
+        <input type="range" id="pdf-aggressiveness" class="range" min="0" max="100" value="50">
+        <div class="aggressiveness-labels">
+          <span>Conservative</span>
+          <span>Aggressive</span>
+        </div>
+        <div id="aggressiveness-tooltip" class="aggressiveness-tooltip hidden">
+          <strong>0-20%:</strong> Light optimization, terminology alignment<br>
+          <strong>30-50%:</strong> Active rewriting, skill prioritization<br>
+          <strong>60-80%:</strong> Heavy transformation, keyword injection<br>
+          <strong>90-100%:</strong> Complete rewrite for maximum fit
+        </div>
+      </div>
+
+      <div id="universal-progress" class="universal-progress hidden">
+        <div class="progress-step" data-step="parse">
+          <span class="step-indicator"></span>
+          <span class="step-text">Analyzing job description...</span>
+        </div>
+        <div class="progress-step" data-step="personalize">
+          <span class="step-indicator"></span>
+          <span class="step-text">Personalizing resume...</span>
+        </div>
+        <div class="progress-step" data-step="generate">
+          <span class="step-indicator"></span>
+          <span class="step-text">Generating PDF...</span>
+        </div>
+      </div>
+
+      <div id="universal-error" class="universal-error hidden"></div>
+
+      <button id="generate-pdf-btn" class="btn btn-primary btn-block">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <path d="M12 18v-6"/>
+          <path d="M9 15l3 3 3-3"/>
+        </svg>
+        Generate PDF Resume
+      </button>
+    </section>
+
     <!-- Research Mode Section -->
     <section id="research-section" class="card">
       <div class="card-header">

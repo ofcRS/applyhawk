@@ -57,6 +57,16 @@ const elements = {
   resumesList: document.getElementById("resumes-list"),
   refreshResumesBtn: document.getElementById("refresh-resumes-btn"),
 
+  // Universal CV
+  jobDescriptionInput: document.getElementById("job-description-input"),
+  generatePdfBtn: document.getElementById("generate-pdf-btn"),
+  universalProgress: document.getElementById("universal-progress"),
+  universalError: document.getElementById("universal-error"),
+  pdfAggressiveness: document.getElementById("pdf-aggressiveness"),
+  pdfAggressivenessValue: document.getElementById("pdf-aggressiveness-value"),
+  aggressivenessInfoBtn: document.getElementById("aggressiveness-info-btn"),
+  aggressivenessTooltip: document.getElementById("aggressiveness-tooltip"),
+
   // Research Mode
   researchToggle: document.getElementById("research-toggle"),
   researchStats: document.getElementById("research-stats"),
@@ -84,6 +94,11 @@ async function init() {
   elements.refreshResumesBtn?.addEventListener("click", () =>
     loadHHResumes(true),
   );
+
+  // Universal CV
+  elements.generatePdfBtn?.addEventListener("click", handleGeneratePdf);
+  elements.pdfAggressiveness?.addEventListener("input", handleAggressivenessChange);
+  elements.aggressivenessInfoBtn?.addEventListener("click", toggleAggressivenessTooltip);
 
   // Category buttons
   document.querySelectorAll(".category-btn").forEach((btn) => {
@@ -855,6 +870,220 @@ setInterval(async () => {
     await updateCapturedCount();
   }
 }, 3000);
+
+// ========== Universal CV Functions ==========
+
+/**
+ * Handle aggressiveness slider change
+ */
+function handleAggressivenessChange() {
+  const value = elements.pdfAggressiveness?.value || 50;
+  if (elements.pdfAggressivenessValue) {
+    elements.pdfAggressivenessValue.textContent = `${value}%`;
+  }
+}
+
+/**
+ * Toggle aggressiveness tooltip visibility
+ */
+function toggleAggressivenessTooltip() {
+  elements.aggressivenessTooltip?.classList.toggle("hidden");
+}
+
+/**
+ * Handle PDF generation flow
+ */
+async function handleGeneratePdf() {
+  const jobDescription = elements.jobDescriptionInput?.value?.trim();
+
+  if (!jobDescription || jobDescription.length < 20) {
+    showUniversalError(
+      "Please paste a job description (at least 20 characters)",
+    );
+    return;
+  }
+
+  // Check for base resume
+  const baseResume = await sendMessage({ type: "GET_BASE_RESUME" });
+  if (!baseResume || !baseResume.fullName) {
+    showUniversalError("Please configure your base resume in Settings first");
+    return;
+  }
+
+  // Reset UI state
+  hideUniversalError();
+  showUniversalProgress();
+  elements.generatePdfBtn.disabled = true;
+
+  let parsedVacancy = null;
+  let personalizedResume = null;
+
+  try {
+    // Step 1: Parse job description
+    setProgressStep("parse", "active");
+    const parseResult = await sendMessage({
+      type: "PARSE_UNIVERSAL_VACANCY",
+      rawText: jobDescription,
+    });
+
+    if (!parseResult.success) {
+      throw new Error(parseResult.error || "Failed to parse job description");
+    }
+
+    parsedVacancy = parseResult.vacancy;
+    setProgressStep("parse", "complete");
+
+    // Step 2: Personalize resume
+    setProgressStep("personalize", "active");
+    // Get aggressiveness from slider (0-100) and convert to 0-1 scale
+    const aggressivenessPercent = Number.parseInt(
+      elements.pdfAggressiveness?.value || "50",
+      10,
+    );
+    const aggressiveness = aggressivenessPercent / 100;
+
+    const personalizeResult = await sendMessage({
+      type: "GENERATE_PERSONALIZED_RESUME",
+      baseResume,
+      vacancy: parsedVacancy,
+      aggressiveness,
+    });
+
+    if (!personalizeResult.success) {
+      throw new Error(
+        personalizeResult.error || "Failed to personalize resume",
+      );
+    }
+
+    personalizedResume = personalizeResult;
+    setProgressStep("personalize", "complete");
+
+    // Step 3: Generate PDF
+    setProgressStep("generate", "active");
+    const pdfResult = await sendMessage({
+      type: "GENERATE_PDF_RESUME",
+      personalizedResume,
+      baseResume,
+      vacancy: parsedVacancy,
+    });
+
+    if (!pdfResult.success) {
+      throw new Error(pdfResult.error || "Failed to generate PDF");
+    }
+
+    setProgressStep("generate", "complete");
+
+    // Download the PDF
+    const pdfBytes = new Uint8Array(pdfResult.pdfBytes);
+    downloadPdf(pdfBytes, generatePdfFilename(parsedVacancy));
+
+    showToast("PDF resume generated successfully!", "success");
+  } catch (error) {
+    console.error("PDF generation failed:", error);
+    showUniversalError(error.message || "Failed to generate PDF");
+
+    // Mark current step as error
+    const steps = ["parse", "personalize", "generate"];
+    for (const step of steps) {
+      const el = elements.universalProgress?.querySelector(
+        `[data-step="${step}"]`,
+      );
+      if (el?.classList.contains("active")) {
+        setProgressStep(step, "error");
+        break;
+      }
+    }
+  } finally {
+    elements.generatePdfBtn.disabled = false;
+  }
+}
+
+/**
+ * Show universal progress section
+ */
+function showUniversalProgress() {
+  elements.universalProgress?.classList.remove("hidden");
+  // Reset all steps
+  elements.universalProgress
+    ?.querySelectorAll(".progress-step")
+    .forEach((el) => {
+      el.classList.remove("active", "complete", "error");
+    });
+}
+
+/**
+ * Hide universal progress section
+ */
+function hideUniversalProgress() {
+  elements.universalProgress?.classList.add("hidden");
+}
+
+/**
+ * Set progress step state
+ * @param {string} step - Step name (parse, personalize, generate)
+ * @param {string} state - State (active, complete, error)
+ */
+function setProgressStep(step, state) {
+  const stepEl = elements.universalProgress?.querySelector(
+    `[data-step="${step}"]`,
+  );
+  if (stepEl) {
+    stepEl.classList.remove("active", "complete", "error");
+    stepEl.classList.add(state);
+  }
+}
+
+/**
+ * Show universal error message
+ */
+function showUniversalError(message) {
+  if (elements.universalError) {
+    elements.universalError.textContent = message;
+    elements.universalError.classList.remove("hidden");
+  }
+}
+
+/**
+ * Hide universal error message
+ */
+function hideUniversalError() {
+  elements.universalError?.classList.add("hidden");
+}
+
+/**
+ * Generate PDF filename from vacancy info
+ */
+function generatePdfFilename(vacancy) {
+  const position = vacancy?.name || "Resume";
+  const company = vacancy?.company || "";
+  const date = new Date().toISOString().split("T")[0];
+
+  // Clean up filename
+  const cleanName = `${position}${company ? ` - ${company}` : ""}`
+    .replace(/[^a-zA-Z0-9\u0400-\u04FF\s-]/g, "")
+    .replace(/\s+/g, "_")
+    .substring(0, 50);
+
+  return `${cleanName}_${date}.pdf`;
+}
+
+/**
+ * Download PDF file
+ * @param {Uint8Array} pdfBytes - PDF content
+ * @param {string} filename - File name
+ */
+function downloadPdf(pdfBytes, filename) {
+  const blob = new Blob([pdfBytes], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 // Initialize
 document.addEventListener("DOMContentLoaded", init);

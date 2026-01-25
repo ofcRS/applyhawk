@@ -329,6 +329,227 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   Universal CV Section
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.job-description-textarea {
+  resize: vertical;
+  min-height: 100px;
+  max-height: 300px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.universal-progress {
+  margin: var(--s-md) 0;
+  padding: var(--s-md);
+  background: var(--surface-0);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+
+.progress-step {
+  display: flex;
+  align-items: center;
+  gap: var(--s-sm);
+  padding: var(--s-sm) 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.progress-step:not(:last-child) {
+  border-bottom: 1px solid var(--border);
+}
+
+.step-indicator {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.progress-step.active {
+  color: var(--text-primary);
+}
+
+.progress-step.active .step-indicator {
+  border-color: var(--vermillion);
+  background: var(--vermillion);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.progress-step.active .step-indicator::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: white;
+  border-radius: 50%;
+}
+
+.progress-step.complete {
+  color: var(--success);
+}
+
+.progress-step.complete .step-indicator {
+  border-color: var(--success);
+  background: var(--success);
+}
+
+.progress-step.complete .step-indicator::after {
+  content: "";
+  width: 10px;
+  height: 6px;
+  border-left: 2px solid white;
+  border-bottom: 2px solid white;
+  transform: rotate(-45deg);
+  margin-bottom: 2px;
+}
+
+.progress-step.error {
+  color: var(--vermillion);
+}
+
+.progress-step.error .step-indicator {
+  border-color: var(--vermillion);
+  background: var(--vermillion);
+}
+
+.progress-step.error .step-indicator::after {
+  content: "!";
+  color: white;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--vermillion-dim);
+  }
+  50% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+
+.universal-error {
+  margin: var(--s-md) 0;
+  padding: var(--s-md);
+  background: var(--vermillion-dim);
+  border: 1px solid var(--vermillion);
+  border-radius: var(--radius-md);
+  color: var(--vermillion);
+  font-size: 13px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Aggressiveness Settings
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.aggressiveness-settings {
+  margin: var(--s-md) 0;
+  padding: var(--s-md);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.aggressiveness-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--s-sm);
+}
+
+.aggressiveness-header label {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.aggressiveness-header #pdf-aggressiveness-value {
+  color: var(--vermillion);
+  font-weight: 600;
+}
+
+.btn-xs {
+  padding: 2px;
+  width: 20px;
+  height: 20px;
+}
+
+/* Range Slider */
+.range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: var(--surface-2);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--vermillion);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid var(--surface-0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease;
+}
+
+.range::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: var(--vermillion);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid var(--surface-0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.aggressiveness-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--s-xs);
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+}
+
+.aggressiveness-tooltip {
+  margin-top: var(--s-sm);
+  padding: var(--s-sm);
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.aggressiveness-tooltip strong {
+  color: var(--vermillion);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    Toggle Switch
    ═══════════════════════════════════════════════════════════════════════════ */
 
