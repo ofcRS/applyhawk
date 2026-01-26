@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JobGenius - Settings</title>
+  <link rel="stylesheet" href="../shared/design-tokens.css">
+  <link rel="stylesheet" href="../shared/base.css">
+  <link rel="stylesheet" href="../shared/components.css">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <div class="logo">
+          <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+          <h1 class="logo-text">JobGenius Settings</h1>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Tabs -->
+    <nav class="tabs settings-tabs">
+      <button class="tab active" data-tab="general">General</button>
+      <button class="tab" data-tab="resume">Resume</button>
+      <button class="tab" data-tab="platforms">Platforms</button>
+    </nav>
+
+    <!-- Tab Contents -->
+    <main class="tab-contents">
+      <!-- General Tab -->
+      <section id="tab-general" class="tab-content active">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">General Settings</h2>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label" for="language">Language</label>
+              <select id="language" class="select">
+                <option value="en">English</option>
+                <option value="ru">Russian</option>
+              </select>
+              <p class="form-hint">Interface and AI output language</p>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Default Aggressiveness</label>
+              <div class="slider-container">
+                <input type="range" id="default-aggressiveness" class="range" min="0" max="100" value="50">
+                <span id="default-aggressiveness-value" class="slider-value">50%</span>
+              </div>
+              <p class="form-hint">
+                How much to adapt your resume to job requirements<br>
+                0-30%: Conservative (light optimization)<br>
+                40-60%: Moderate (active rewriting)<br>
+                70-100%: Aggressive (maximum adaptation)
+              </p>
+            </div>
+
+            <div class="form-group">
+              <label class="toggle-label">
+                <span class="toggle">
+                  <input type="checkbox" id="auto-fit-enabled" checked>
+                  <span class="toggle-slider"></span>
+                </span>
+                <span class="toggle-text">Auto-calculate fit score</span>
+              </label>
+              <p class="form-hint">Automatically analyze how well your resume matches each job</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Cover Letter Contacts</h2>
+          </div>
+          <div class="card-body">
+            <p class="form-hint" style="margin-bottom: 16px;">
+              These contacts will be added to the end of each cover letter
+            </p>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="contact-telegram">Telegram</label>
+                <input type="text" id="contact-telegram" class="input" placeholder="@username">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="contact-email">Email</label>
+                <input type="email" id="contact-email" class="input" placeholder="email@example.com">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="salary-expectation">Salary Expectation</label>
+              <input type="text" id="salary-expectation" class="input" placeholder="$100,000 or 250,000 RUB">
+              <p class="form-hint">Will be included in cover letter if job asks for salary expectations</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Custom Prompt Template</h2>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label" for="cover-template">Cover Letter Prompt (optional)</label>
+              <textarea id="cover-template" class="textarea" rows="6" placeholder="Leave empty to use default prompt. Available variables: {{vacancy.name}}, {{vacancy.company}}, {{resume.experience}}, etc."></textarea>
+              <p class="form-hint">
+                Variables: {{vacancy.name}}, {{vacancy.company}}, {{vacancy.description}},
+                {{vacancy.keySkills}}, {{resume.fullName}}, {{resume.title}}, {{resume.experience}}, {{resume.skills}}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Resume Tab -->
+      <section id="tab-resume" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Import Resume</h2>
+          </div>
+          <div class="card-body">
+            <div class="import-section">
+              <label for="pdf-import" class="btn btn-secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                Import from PDF
+              </label>
+              <input type="file" id="pdf-import" accept=".pdf" class="hidden">
+              <span id="import-status" class="import-status"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Personal Information</h2>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label" for="full-name">Full Name</label>
+              <input type="text" id="full-name" class="input" placeholder="John Doe">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="title">Desired Position</label>
+              <input type="text" id="title" class="input" placeholder="Frontend Developer">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="summary">About Me</label>
+              <textarea id="summary" class="textarea" rows="4" placeholder="Brief description of your experience and skills..."></textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="skills">Skills (comma separated)</label>
+              <input type="text" id="skills" class="input" placeholder="JavaScript, React, TypeScript, Node.js">
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Work Experience</h2>
+          </div>
+          <div class="card-body">
+            <div id="experience-list" class="experience-list"></div>
+            <button type="button" id="add-experience" class="btn btn-secondary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Add Experience
+            </button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Contact Information</h2>
+          </div>
+          <div class="card-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="email">Email</label>
+                <input type="email" id="email" class="input" placeholder="email@example.com">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="phone">Phone</label>
+                <input type="tel" id="phone" class="input" placeholder="+1 555 123-4567">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="telegram">Telegram</label>
+              <input type="text" id="telegram" class="input" placeholder="@username">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Platforms Tab -->
+      <section id="tab-platforms" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">HH.ru (HeadHunter)</h2>
+            <span id="hh-auth-badge" class="badge">Not Connected</span>
+          </div>
+          <div class="card-body">
+            <p class="form-hint" style="margin-bottom: 16px;">
+              Manage your resumes on HH.ru. You must be logged into hh.ru for this section to work.
+            </p>
+
+            <div class="hh-actions">
+              <button type="button" id="load-hh-resumes" class="btn btn-secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 4v10l11 7"/>
+                  <path d="M1 14l11-7 11 7"/>
+                  <path d="M12 4v10"/>
+                </svg>
+                Load Resumes
+              </button>
+              <button type="button" id="delete-all-resumes" class="btn btn-danger hidden">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+                Delete All
+              </button>
+            </div>
+
+            <div id="hh-resumes-list" class="hh-resumes-list">
+              <p class="form-hint">Click "Load Resumes" to view your HH.ru resumes</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card coming-soon">
+          <div class="card-header">
+            <h2 class="card-title">LinkedIn</h2>
+            <span class="badge badge-warning">Coming Soon</span>
+          </div>
+          <div class="card-body">
+            <p class="form-hint">LinkedIn integration will be available in a future update.</p>
+          </div>
+        </div>
+
+        <div class="card coming-soon">
+          <div class="card-header">
+            <h2 class="card-title">Indeed</h2>
+            <span class="badge badge-warning">Coming Soon</span>
+          </div>
+          <div class="card-body">
+            <p class="form-hint">Indeed integration will be available in a future update.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Actions Bar -->
+    <footer class="actions-bar">
+      <button type="button" id="save-btn" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+          <polyline points="17 21 17 13 7 13 7 21"/>
+          <polyline points="7 3 7 8 15 8"/>
+        </svg>
+        Save Settings
+      </button>
+      <button type="button" id="reset-btn" class="btn btn-ghost">
+        Reset
+      </button>
+    </footer>
+
+    <!-- Status Toast -->
+    <div id="toast-container" class="toast-container"></div>
+  </div>
+
+  <!-- Experience Template (hidden) -->
+  <template id="experience-template">
+    <div class="experience-item">
+      <div class="experience-header">
+        <span class="experience-number"></span>
+        <button type="button" class="btn-remove" title="Remove">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Company</label>
+          <input type="text" class="input exp-company" placeholder="Company name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Position</label>
+          <input type="text" class="input exp-position" placeholder="Your role">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Start Date</label>
+          <input type="month" class="input exp-start">
+        </div>
+        <div class="form-group">
+          <label class="form-label">End Date</label>
+          <input type="month" class="input exp-end" placeholder="Leave empty if current">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="textarea exp-description" rows="2" placeholder="What you did"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Achievements (one per line)</label>
+        <textarea class="textarea exp-achievements" rows="2" placeholder="Increased conversion by 30%&#10;Optimized load time by 50%"></textarea>
+      </div>
+    </div>
+  </template>
+
+  <script src="options.js" type="module"></script>
+</body>
+</html>

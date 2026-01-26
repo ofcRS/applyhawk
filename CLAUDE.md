@@ -57,9 +57,9 @@ src/
 │   ├── hh-injector.js      # Injects network interceptor
 │   └── network-interceptor.js  # Captures HH.ru API calls (research mode)
 ├── panel/
-│   ├── panel.html/js/css   # Side panel: auth, model selector, research mode
+│   ├── panel.html/js/css   # Side panel: AI model selector, API key, research mode
 ├── options/
-│   ├── options.html/js/css # Settings: API key, resume editor, PDF import
+│   ├── options.html/js/css # Settings: resume editor, PDF import, general prefs
 ├── lib/
 │   └── storage.js          # Chrome storage wrapper
 └── utils/
@@ -73,9 +73,10 @@ src/
 4. Click "Load unpacked" → select `dist/` folder
 
 ## Configuration Required
-1. **OpenRouter API key** - Get from https://openrouter.ai/keys
-2. **Base resume** - Fill manually or import from PDF in Options page
-3. **HH.ru login** - Must be logged into hh.ru (uses session cookies)
+1. **OpenRouter API key** - Get from https://openrouter.ai/keys (set in Panel → Platforms tab)
+2. **AI Model** - Select in Panel → Platforms tab (categories: Top/All/Budget with pricing info)
+3. **Base resume** - Fill manually or import from PDF in Options page
+4. **HH.ru login** - Must be logged into hh.ru (uses session cookies)
 
 ## HH.ru Internal API (Discovered)
 
@@ -117,6 +118,12 @@ Extracted from `_xsrf` cookie on hh.ru domain.
 - Toggle to capture all HH.ru API calls
 - Export captured requests as JSON
 - Used for discovering new endpoints
+
+### 5. AI Settings (Side Panel → Platforms Tab)
+- API Key input with validation
+- Model selector with categories (Top/All/Budget)
+- Live model list with pricing and context size info
+- Selected model display card
 
 ## Message Types (Background Script)
 
