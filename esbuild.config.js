@@ -10,7 +10,14 @@ if (existsSync(outDir)) {
   rmSync(outDir, { recursive: true });
 }
 mkdirSync(outDir);
-mkdirSync(join(outDir, "content-scripts"), { recursive: true });
+
+// Create new folder structure in dist
+mkdirSync(join(outDir, "core", "utils"), { recursive: true });
+mkdirSync(join(outDir, "platforms", "hh", "content"), { recursive: true });
+mkdirSync(join(outDir, "platforms", "hh", "styles"), { recursive: true });
+mkdirSync(join(outDir, "ui", "panel"), { recursive: true });
+mkdirSync(join(outDir, "ui", "options"), { recursive: true });
+mkdirSync(join(outDir, "ui", "shared"), { recursive: true });
 
 // Common build options
 const commonOptions = {
@@ -24,30 +31,29 @@ const commonOptions = {
 // Build background script
 const backgroundBuild = esbuild.build({
   ...commonOptions,
-  entryPoints: ["src/background-scripts/background.js"],
+  entryPoints: ["src/background.js"],
   outfile: join(outDir, "background.js"),
 });
 
 // Build content script (vacancy page)
 const contentBuild = esbuild.build({
   ...commonOptions,
-  entryPoints: ["src/content-scripts/hh-vacancy.js"],
-  outfile: join(outDir, "content-scripts", "hh-vacancy.js"),
+  entryPoints: ["src/platforms/hh/content/vacancy-ui.js"],
+  outfile: join(outDir, "platforms", "hh", "content", "vacancy-ui.js"),
 });
 
 // Build injector content script (all HH.ru pages)
 const injectorBuild = esbuild.build({
   ...commonOptions,
-  entryPoints: ["src/content-scripts/hh-injector.js"],
-  outfile: join(outDir, "content-scripts", "hh-injector.js"),
+  entryPoints: ["src/platforms/hh/content/injector.js"],
+  outfile: join(outDir, "platforms", "hh", "content", "injector.js"),
 });
 
 // Build options page (needs bundling for pdfjs-dist)
-mkdirSync(join(outDir, "options"), { recursive: true });
 const optionsBuild = esbuild.build({
   ...commonOptions,
-  entryPoints: ["src/options/options.js"],
-  outfile: join(outDir, "options", "options.js"),
+  entryPoints: ["src/ui/options/options.js"],
+  outfile: join(outDir, "ui", "options", "options.js"),
 });
 
 await Promise.all([backgroundBuild, contentBuild, injectorBuild, optionsBuild]);
@@ -60,49 +66,52 @@ if (existsSync("src/oauth-callback.html")) {
   copyFileSync("src/oauth-callback.html", join(outDir, "oauth-callback.html"));
 }
 
-// Copy panel folder (side panel)
-if (existsSync("src/panel")) {
-  cpSync("src/panel", join(outDir, "panel"), { recursive: true });
+// Copy shared UI folder (design system)
+if (existsSync("src/ui/shared")) {
+  cpSync("src/ui/shared", join(outDir, "ui", "shared"), { recursive: true });
 }
 
-// Copy popup folder (legacy, keeping for now)
-if (existsSync("src/popup")) {
-  cpSync("src/popup", join(outDir, "popup"), { recursive: true });
+// Copy panel folder (side panel)
+if (existsSync("src/ui/panel")) {
+  cpSync("src/ui/panel", join(outDir, "ui", "panel"), { recursive: true });
 }
 
 // Copy options folder (only HTML and CSS, JS is bundled)
-if (existsSync("src/options/options.html")) {
+if (existsSync("src/ui/options/options.html")) {
   copyFileSync(
-    "src/options/options.html",
-    join(outDir, "options", "options.html"),
+    "src/ui/options/options.html",
+    join(outDir, "ui", "options", "options.html"),
   );
 }
-if (existsSync("src/options/options.css")) {
+if (existsSync("src/ui/options/options.css")) {
   copyFileSync(
-    "src/options/options.css",
-    join(outDir, "options", "options.css"),
+    "src/ui/options/options.css",
+    join(outDir, "ui", "options", "options.css"),
   );
 }
 
 // Copy PDF.js worker for options page PDF import
 const pdfWorkerSrc = "node_modules/pdfjs-dist/build/pdf.worker.min.mjs";
 if (existsSync(pdfWorkerSrc)) {
-  copyFileSync(pdfWorkerSrc, join(outDir, "options", "pdf.worker.min.mjs"));
+  copyFileSync(
+    pdfWorkerSrc,
+    join(outDir, "ui", "options", "pdf.worker.min.mjs"),
+  );
 }
 
 // Copy content script CSS
-if (existsSync("src/content-scripts/hh-vacancy.css")) {
+if (existsSync("src/platforms/hh/styles/vacancy.css")) {
   copyFileSync(
-    "src/content-scripts/hh-vacancy.css",
-    join(outDir, "content-scripts", "hh-vacancy.css"),
+    "src/platforms/hh/styles/vacancy.css",
+    join(outDir, "platforms", "hh", "styles", "vacancy.css"),
   );
 }
 
 // Copy network interceptor (not bundled, injected into page context)
-if (existsSync("src/content-scripts/network-interceptor.js")) {
+if (existsSync("src/core/utils/network-interceptor.js")) {
   copyFileSync(
-    "src/content-scripts/network-interceptor.js",
-    join(outDir, "content-scripts", "network-interceptor.js"),
+    "src/core/utils/network-interceptor.js",
+    join(outDir, "core", "utils", "network-interceptor.js"),
   );
 }
 
@@ -114,6 +123,8 @@ if (existsSync("icons")) {
 // Copy fonts folder
 if (existsSync("fonts")) {
   cpSync("fonts", join(outDir, "fonts"), { recursive: true });
+} else if (existsSync("src/fonts")) {
+  cpSync("src/fonts", join(outDir, "fonts"), { recursive: true });
 }
 
 // Copy prompts folder (YAML templates)
@@ -129,8 +140,8 @@ if (isWatch) {
   const ctx = await esbuild.context({
     ...commonOptions,
     entryPoints: [
-      "src/background-scripts/background.js",
-      "src/content-scripts/hh-vacancy.js",
+      "src/background.js",
+      "src/platforms/hh/content/vacancy-ui.js",
     ],
     outdir: outDir,
   });

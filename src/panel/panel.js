@@ -97,8 +97,14 @@ async function init() {
 
   // Universal CV
   elements.generatePdfBtn?.addEventListener("click", handleGeneratePdf);
-  elements.pdfAggressiveness?.addEventListener("input", handleAggressivenessChange);
-  elements.aggressivenessInfoBtn?.addEventListener("click", toggleAggressivenessTooltip);
+  elements.pdfAggressiveness?.addEventListener(
+    "input",
+    handleAggressivenessChange,
+  );
+  elements.aggressivenessInfoBtn?.addEventListener(
+    "click",
+    toggleAggressivenessTooltip,
+  );
 
   // Category buttons
   document.querySelectorAll(".category-btn").forEach((btn) => {
@@ -438,6 +444,12 @@ async function loadSettings() {
     elements.apiKeyInput.value = settings.openRouterApiKey || "";
     selectedModelId = settings.preferredModel || "anthropic/claude-sonnet-4";
     selectedResumeHash = settings.defaultHHResumeId || null;
+
+    // Load default aggressiveness
+    if (settings.defaultAggressiveness !== undefined) {
+      elements.pdfAggressiveness.value = settings.defaultAggressiveness;
+      elements.pdfAggressivenessValue.textContent = `${settings.defaultAggressiveness}%`;
+    }
   } catch (error) {
     console.error("Failed to load settings:", error);
   }
@@ -876,10 +888,19 @@ setInterval(async () => {
 /**
  * Handle aggressiveness slider change
  */
-function handleAggressivenessChange() {
+async function handleAggressivenessChange() {
   const value = elements.pdfAggressiveness?.value || 50;
   if (elements.pdfAggressivenessValue) {
     elements.pdfAggressivenessValue.textContent = `${value}%`;
+  }
+
+  // Save to storage
+  try {
+    const settings = await getStoredSettings();
+    settings.defaultAggressiveness = Number.parseInt(value, 10);
+    await chrome.storage.local.set({ settings });
+  } catch (error) {
+    console.error("Failed to save aggressiveness:", error);
   }
 }
 

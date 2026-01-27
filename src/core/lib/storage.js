@@ -21,8 +21,6 @@ const DEFAULT_SETTINGS = {
   // Contact info for cover letters
   contactEmail: "",
   contactTelegram: "",
-  // Default aggressiveness for PDF resume generation
-  defaultAggressiveness: 50,
   aggressiveFit: {
     enabled: true,
     minFitScore: 0.15, // Skip vacancies below this
@@ -45,7 +43,6 @@ const DEFAULT_RESUME = {
     email: "",
     phone: "",
     telegram: "",
-    linkedin: "",
   },
 };
 

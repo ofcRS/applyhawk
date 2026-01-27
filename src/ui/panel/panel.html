@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JobGenius</title>
+  <link rel="stylesheet" href="../shared/design-tokens.css">
+  <link rel="stylesheet" href="../shared/base.css">
+  <link rel="stylesheet" href="../shared/components.css">
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <div class="panel">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+          <path d="M2 17l10 5 10-5"></path>
+          <path d="M2 12l10 5 10-5"></path>
+        </svg>
+        <span class="logo-text">JobGenius</span>
+      </div>
+      <button id="settings-btn" class="btn-icon" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Main Tabs -->
+    <nav class="tabs main-tabs">
+      <button class="tab active" data-tab="resume">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <path d="M12 18v-6M9 15l3 3 3-3"/>
+        </svg>
+        <span>Resume</span>
+      </button>
+      <button class="tab" data-tab="cover">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+          <polyline points="22,6 12,13 2,6"/>
+        </svg>
+        <span>Cover</span>
+      </button>
+      <button class="tab" data-tab="apply">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        <span>Apply</span>
+      </button>
+      <button class="tab" data-tab="platforms">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+          <polyline points="2 17 12 22 22 17"/>
+          <polyline points="2 12 12 17 22 12"/>
+        </svg>
+        <span>Platforms</span>
+      </button>
+    </nav>
+
+    <!-- Tab Content -->
+    <main class="tab-panels">
+      <!-- Resume Tab -->
+      <section id="tab-resume" class="tab-content active">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">PDF Resume Generator</h3>
+          </div>
+          <p class="card-subtitle">Paste any job description to create a personalized resume</p>
+
+          <div class="form-group">
+            <textarea
+              id="job-description-input"
+              class="textarea job-description-textarea"
+              placeholder="Paste job description here..."
+              rows="6"
+            ></textarea>
+          </div>
+
+          <!-- Aggressiveness Settings -->
+          <div class="aggressiveness-section">
+            <div class="aggressiveness-header">
+              <label for="pdf-aggressiveness">
+                Aggressiveness: <span id="pdf-aggressiveness-value" class="text-primary">50%</span>
+              </label>
+              <button id="aggressiveness-info-btn" class="btn-icon btn-sm" title="What is aggressiveness?">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </button>
+            </div>
+            <input type="range" id="pdf-aggressiveness" class="range" min="0" max="100" value="50">
+            <div class="aggressiveness-labels">
+              <span>Conservative</span>
+              <span>Aggressive</span>
+            </div>
+            <div id="aggressiveness-tooltip" class="aggressiveness-tooltip hidden">
+              <strong>0-20%:</strong> Light optimization, terminology alignment<br>
+              <strong>30-50%:</strong> Active rewriting, skill prioritization<br>
+              <strong>60-80%:</strong> Heavy transformation, keyword injection<br>
+              <strong>90-100%:</strong> Complete rewrite for maximum fit
+            </div>
+          </div>
+
+          <!-- Progress Steps -->
+          <div id="resume-progress" class="progress-steps hidden">
+            <div class="progress-step" data-step="parse">
+              <span class="step-indicator">1</span>
+              <span class="step-text">Analyzing job description...</span>
+            </div>
+            <div class="progress-step" data-step="personalize">
+              <span class="step-indicator">2</span>
+              <span class="step-text">Personalizing resume...</span>
+            </div>
+            <div class="progress-step" data-step="generate">
+              <span class="step-indicator">3</span>
+              <span class="step-text">Generating PDF...</span>
+            </div>
+          </div>
+
+          <div id="resume-error" class="error-message hidden"></div>
+
+          <button id="generate-pdf-btn" class="btn btn-primary btn-block">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <path d="M12 18v-6M9 15l3 3 3-3"/>
+            </svg>
+            Generate PDF Resume
+          </button>
+        </div>
+      </section>
+
+      <!-- Cover Letter Tab -->
+      <section id="tab-cover" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Cover Letter Generator</h3>
+          </div>
+          <p class="card-subtitle">Create a personalized cover letter for any job</p>
+
+          <div class="form-group">
+            <textarea
+              id="cover-job-description"
+              class="textarea"
+              placeholder="Paste job description here..."
+              rows="5"
+            ></textarea>
+          </div>
+
+          <!-- Generated Cover Letter -->
+          <div id="cover-result" class="cover-result hidden">
+            <div class="cover-result-header">
+              <span class="label">Generated Cover Letter</span>
+              <div class="cover-actions">
+                <button id="copy-cover-btn" class="btn btn-sm btn-ghost" title="Copy to clipboard">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                  Copy
+                </button>
+              </div>
+            </div>
+            <div id="cover-text" class="cover-text"></div>
+          </div>
+
+          <div id="cover-error" class="error-message hidden"></div>
+
+          <button id="generate-cover-btn" class="btn btn-primary btn-block">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+            Generate Cover Letter
+          </button>
+        </div>
+      </section>
+
+      <!-- Apply Tab -->
+      <section id="tab-apply" class="tab-content">
+        <!-- Platform Selector -->
+        <div class="platform-selector">
+          <button class="platform-btn active" data-platform="hh">
+            <span class="platform-icon">HH</span>
+            <span>HH.ru</span>
+          </button>
+          <button class="platform-btn disabled" data-platform="linkedin" disabled>
+            <span class="platform-icon">in</span>
+            <span>LinkedIn</span>
+            <span class="badge">Soon</span>
+          </button>
+        </div>
+
+        <!-- HH.ru Apply Flow -->
+        <div id="platform-hh" class="platform-content active">
+          <!-- Auth Status -->
+          <div class="card">
+            <div class="auth-status" id="hh-auth-status">
+              <div class="auth-icon" id="hh-auth-icon">
+                <div class="spinner spinner-sm"></div>
+              </div>
+              <div class="auth-info">
+                <h4 id="hh-auth-title">Checking...</h4>
+                <p id="hh-auth-text">Verifying HH.ru connection</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resume Selection -->
+          <div class="card" id="hh-resumes-card">
+            <div class="card-header">
+              <h3 class="card-title">Select Resume</h3>
+              <button id="refresh-resumes-btn" class="btn-icon btn-sm" title="Refresh">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M23 4v6h-6M1 20v-6h6"/>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                </svg>
+              </button>
+            </div>
+            <div id="hh-resumes-list" class="resumes-list">
+              <div class="loading-state">
+                <div class="spinner spinner-sm"></div>
+                <span>Loading resumes...</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Apply (when on vacancy page) -->
+          <div class="card" id="quick-apply-card" style="display: none;">
+            <div class="card-header">
+              <h3 class="card-title">Quick Apply</h3>
+            </div>
+            <p class="card-subtitle" id="vacancy-info">Navigate to a vacancy page to apply</p>
+            <button id="quick-apply-btn" class="btn btn-primary btn-block" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              Apply with AI
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Platforms Tab -->
+      <section id="tab-platforms" class="tab-content">
+        <!-- HH.ru Platform Card -->
+        <div class="card platform-card">
+          <div class="platform-card-header">
+            <div class="platform-info">
+              <span class="platform-logo">HH</span>
+              <div>
+                <h3>HH.ru</h3>
+                <p class="text-muted">HeadHunter Russia</p>
+              </div>
+            </div>
+            <span class="badge badge-success" id="hh-platform-status">Connected</span>
+          </div>
+
+          <div class="platform-stats">
+            <div class="stat">
+              <span class="stat-value" id="hh-resumes-count">0</span>
+              <span class="stat-label">Resumes</span>
+            </div>
+          </div>
+
+          <!-- Research Mode -->
+          <div class="platform-setting">
+            <div class="setting-info">
+              <h4>Research Mode</h4>
+              <p class="text-muted">Capture API requests for analysis</p>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="research-toggle">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div id="research-stats" class="research-stats hidden">
+            <div class="research-counter">
+              <span class="counter-value" id="captured-count">0</span>
+              <span class="counter-label">requests captured</span>
+            </div>
+            <div class="research-actions">
+              <button id="view-requests-btn" class="btn btn-sm btn-secondary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                View
+              </button>
+              <button id="export-requests-btn" class="btn btn-sm btn-secondary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                </svg>
+                Export
+              </button>
+              <button id="clear-requests-btn" class="btn btn-sm btn-ghost btn-danger">Clear</button>
+            </div>
+          </div>
+
+          <!-- Request Viewer Modal -->
+          <div id="request-viewer" class="request-viewer hidden">
+            <div class="request-viewer-header">
+              <span>Captured Requests</span>
+              <button id="close-viewer-btn" class="btn-icon btn-sm">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <div class="request-list" id="request-list"></div>
+          </div>
+        </div>
+
+        <!-- AI Model Card -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">AI Model</h3>
+            <button id="refresh-models-btn" class="btn-icon btn-sm" title="Refresh">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 4v6h-6M1 20v-6h6"/>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Model Search -->
+          <div class="form-group">
+            <div class="search-input">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+              </svg>
+              <input type="text" id="model-search" class="input" placeholder="Search models...">
+            </div>
+          </div>
+
+          <!-- Model Categories -->
+          <div class="model-categories">
+            <button class="category-btn active" data-category="recommended">Top</button>
+            <button class="category-btn" data-category="all">All</button>
+            <button class="category-btn" data-category="cheap">Budget</button>
+          </div>
+
+          <!-- Model List -->
+          <div id="model-list" class="model-list">
+            <div class="loading-state">
+              <div class="spinner"></div>
+              <span>Loading models...</span>
+            </div>
+          </div>
+
+          <!-- Selected Model Info -->
+          <div id="selected-model-info" class="selected-model hidden">
+            <div class="selected-model-header">
+              <span class="label">Selected:</span>
+              <span id="selected-model-name" class="model-name"></span>
+            </div>
+            <div class="selected-model-details">
+              <span id="selected-model-price" class="price-tag"></span>
+              <span id="selected-model-context" class="context-tag"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- API Key Card -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">API Key</h3>
+          </div>
+          <div class="form-group">
+            <div class="input-with-action">
+              <input type="password" id="api-key-input" class="input" placeholder="sk-or-v1-...">
+              <button id="toggle-api-key" class="btn-icon" title="Show/hide">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+            <a href="https://openrouter.ai/keys" target="_blank" class="help-link">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              Get OpenRouter API key
+            </a>
+          </div>
+          <button id="save-api-key-btn" class="btn btn-secondary btn-block">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Save Settings
+          </button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="panel.js" type="module"></script>
+</body>
+</html>

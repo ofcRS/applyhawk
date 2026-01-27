@@ -16,7 +16,9 @@ user: |
   Recent Position: {{resume.recentPosition}} at {{resume.recentCompany}}
 
   REQUIREMENTS:
-  - Russian language
+  - CRITICAL: Detect language from TARGET JOB title - use the same language
+  - If vacancy is in Russian → output title in Russian
+  - If vacancy is in English → output title in English
   - Professional but memorable
   - Highlight main specialization
   - Max 50 characters

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "HH Job AutoApply",
-  "description": "AI-powered job application automation for HH.ru with personalized cover letters",
+  "name": "JobGenius",
+  "description": "AI-powered job application automation with personalized resumes and cover letters",
   "version": "1.0.0",
   "permissions": [
     "storage",
@@ -24,13 +24,13 @@
   "content_scripts": [
     {
       "matches": ["https://hh.ru/*", "https://*.hh.ru/*"],
-      "js": ["content-scripts/hh-injector.js"],
+      "js": ["platforms/hh/content/injector.js"],
       "run_at": "document_start"
     },
     {
       "matches": ["https://hh.ru/vacancy/*", "https://*.hh.ru/vacancy/*"],
-      "js": ["content-scripts/hh-vacancy.js"],
-      "css": ["content-scripts/hh-vacancy.css"]
+      "js": ["platforms/hh/content/vacancy-ui.js"],
+      "css": ["platforms/hh/styles/vacancy.css"]
     }
   ],
   "action": {
@@ -41,9 +41,9 @@
     }
   },
   "side_panel": {
-    "default_path": "panel/panel.html"
+    "default_path": "ui/panel/panel.html"
   },
-  "options_page": "options/options.html",
+  "options_page": "ui/options/options.html",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -51,11 +51,15 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["content-scripts/network-interceptor.js"],
+      "resources": ["core/utils/network-interceptor.js"],
       "matches": ["https://hh.ru/*", "https://*.hh.ru/*"]
     },
     {
       "resources": ["prompts/*.yaml"],
+      "matches": ["<all_urls>"]
+    },
+    {
+      "resources": ["fonts/*.ttf"],
       "matches": ["<all_urls>"]
     }
   ]

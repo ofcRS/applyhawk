@@ -19,6 +19,7 @@ const elements = {
   email: document.getElementById("email"),
   phone: document.getElementById("phone"),
   telegram: document.getElementById("telegram"),
+  linkedin: document.getElementById("linkedin"),
   experienceList: document.getElementById("experience-list"),
   addExperience: document.getElementById("add-experience"),
   coverTemplate: document.getElementById("cover-template"),
@@ -199,6 +200,7 @@ async function loadResume() {
     elements.email.value = resume.contacts?.email || "";
     elements.phone.value = resume.contacts?.phone || "";
     elements.telegram.value = resume.contacts?.telegram || "";
+    elements.linkedin.value = resume.contacts?.linkedin || "";
 
     // Load experience
     elements.experienceList.innerHTML = "";
@@ -319,6 +321,7 @@ function collectResume() {
       email: elements.email.value.trim(),
       phone: elements.phone.value.trim(),
       telegram: elements.telegram.value.trim(),
+      linkedin: elements.linkedin?.value.trim() || "",
     },
   };
 }
@@ -464,6 +467,7 @@ function fillResumeForm(resume) {
   elements.email.value = resume.contacts?.email || "";
   elements.phone.value = resume.contacts?.phone || "";
   elements.telegram.value = resume.contacts?.telegram || "";
+  elements.linkedin.value = resume.contacts?.linkedin || "";
 
   // Clear existing experience and add new
   elements.experienceList.innerHTML = "";

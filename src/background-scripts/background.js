@@ -3,6 +3,7 @@
  * Handles API calls and message routing
  */
 
+import { generatePdfResume } from "../lib/pdf-generator.js";
 import { getBaseResume, getSettings } from "../lib/storage.js";
 import {
   applyToVacancy,
@@ -23,6 +24,7 @@ import {
   generatePersonalizedResume,
   generateResumeTitle,
   parseResumePDF,
+  parseUniversalVacancy,
   shouldSkipVacancy,
 } from "./openrouter.js";
 
@@ -103,6 +105,23 @@ async function handleMessage(message, sender) {
 
     case "GENERATE_RESUME_TITLE":
       return await generateResumeTitle(message.vacancy, message.resume);
+
+    // Universal CV Generation
+    case "PARSE_UNIVERSAL_VACANCY":
+      return await parseUniversalVacancy(message.rawText);
+
+    case "GENERATE_PDF_RESUME": {
+      const pdfBytes = await generatePdfResume(
+        message.personalizedResume,
+        message.baseResume,
+        message.vacancy,
+      );
+      // Convert Uint8Array to regular array for message passing
+      return {
+        success: true,
+        pdfBytes: Array.from(pdfBytes),
+      };
+    }
 
     // HH.ru Internal API (uses session cookies)
     case "CHECK_HH_AUTH":

@@ -482,6 +482,16 @@ export async function generatePersonalizedResume(
   fitAssessment = null,
   aggressiveness = null,
 ) {
+  console.log("[DEBUG:Personalize] generatePersonalizedResume called with:", {
+    baseResumeFullName: baseResume?.fullName,
+    baseResumeExperienceCount: baseResume?.experience?.length,
+    baseResumeSkillsCount: baseResume?.skills?.length,
+    vacancyName: vacancy?.name,
+    vacancyKeySkills: vacancy?.keySkills,
+    providedAggressiveness: aggressiveness,
+    hasFitAssessment: !!fitAssessment,
+  });
+
   const settings = await getSettings();
 
   if (!settings.openRouterApiKey) {
@@ -505,6 +515,11 @@ export async function generatePersonalizedResume(
           settings.aggressiveFit?.aggressivenessOverride,
         )
       : 0.5);
+
+  console.log(
+    "[DEBUG:Personalize] Effective aggressiveness:",
+    effectiveAggressiveness,
+  );
 
   // Build fit section
   const fitSection = fitAssessment
@@ -546,6 +561,19 @@ Strengths: ${fitAssessment.strengths?.join(", ") || "None identified"}`
     },
   );
 
+  console.log(
+    "[DEBUG:Personalize] Prompt template loaded, user prompt length:",
+    promptTemplate.user?.length,
+  );
+  console.log(
+    "[DEBUG:Personalize] Prompt includes aggressiveness:",
+    promptTemplate.user?.includes(effectiveAggressiveness.toFixed(2)),
+  );
+  console.log(
+    "[DEBUG:Personalize] Full prompt (first 1000 chars):",
+    promptTemplate.user?.substring(0, 1000),
+  );
+
   const data = await callOpenRouter({
     apiKey: settings.openRouterApiKey,
     model: settings.preferredModel,
@@ -554,14 +582,40 @@ Strengths: ${fitAssessment.strengths?.join(", ") || "None identified"}`
     max_tokens: promptTemplate.max_tokens,
   });
 
+  console.log("[DEBUG:Personalize] AI response received, model:", data.model);
+
   const content = extractContent(data, "resume");
+  console.log(
+    "[DEBUG:Personalize] AI raw response (first 800 chars):",
+    content?.substring(0, 800),
+  );
+
   const result = parseJsonResponse(content, "generated resume");
+  console.log("[DEBUG:Personalize] Parsed result:", {
+    experienceCount: result.experience?.length,
+    keySkillsCount: result.keySkills?.length,
+    keySkills: result.keySkills,
+    title: result.title,
+  });
+
+  if (result.experience?.length > 0 && baseResume.experience?.length > 0) {
+    console.log("[DEBUG:Personalize] Experience[0] comparison:", {
+      beforePosition: baseResume.experience[0]?.position,
+      afterPosition: result.experience[0]?.position,
+      beforeDescription: baseResume.experience[0]?.description?.substring(
+        0,
+        200,
+      ),
+      afterDescription: result.experience[0]?.description?.substring(0, 200),
+    });
+  }
 
   return {
     success: true,
     experience: result.experience || [],
     keySkills: result.keySkills || [],
     title: result.title || baseResume.title,
+    summary: result.summary || null,
     appliedAggressiveness: effectiveAggressiveness,
     originalFitScore: fitAssessment?.fitScore ?? null,
     model: data.model,
@@ -614,6 +668,11 @@ export async function parseResumePDF(pdfText) {
  * @returns {Object} - Structured vacancy { name, company, description, keySkills, experience, salary }
  */
 export async function parseUniversalVacancy(rawText) {
+  console.log(
+    "[DEBUG:Parse] parseUniversalVacancy called, input length:",
+    rawText?.length,
+  );
+
   const settings = await getSettings();
 
   if (!settings.openRouterApiKey) {
@@ -633,6 +692,11 @@ export async function parseUniversalVacancy(rawText) {
     { rawText: rawText.substring(0, 8000) }, // Limit input to prevent token overflow
   );
 
+  console.log(
+    "[DEBUG:Parse] Prompt template loaded, user prompt length:",
+    promptTemplate.user?.length,
+  );
+
   const data = await callOpenRouter({
     apiKey: settings.openRouterApiKey,
     model: settings.preferredModel,
@@ -641,8 +705,21 @@ export async function parseUniversalVacancy(rawText) {
     max_tokens: promptTemplate.max_tokens,
   });
 
+  console.log("[DEBUG:Parse] AI response received, model:", data.model);
+
   const content = extractContent(data, "vacancy parsing");
+  console.log(
+    "[DEBUG:Parse] AI raw response (first 500 chars):",
+    content?.substring(0, 500),
+  );
+
   const result = parseJsonResponse(content, "parsed vacancy");
+  console.log("[DEBUG:Parse] Parsed vacancy result:", {
+    name: result.name,
+    company: result.company,
+    keySkillsCount: result.keySkills?.length,
+    keySkills: result.keySkills,
+  });
 
   return {
     success: true,
