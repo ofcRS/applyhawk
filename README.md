@@ -13,6 +13,7 @@ AI-powered Chrome extension for automating job applications on HH.ru (HeadHunter
 ## Features
 
 - **AI Resume Personalization** - Automatically rewrites your resume to match each job's requirements
+- **PDF Resume Generation** - Create professional PDF resumes with Noto Serif fonts (Cyrillic support)
 - **Smart Cover Letters** - Generates personalized cover letters in Russian using AI
 - **PDF Import** - Import your existing resume from PDF and auto-fill all fields
 - **Fit Score Analysis** - See how well your profile matches each vacancy
@@ -41,7 +42,7 @@ Your Base Resume → AI Analyzes Job Requirements → Personalized Resume + Cove
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/hh-autoapply.git
+git clone https://github.com/ofcRS/hh-autoapply.git
 cd hh-autoapply
 
 # Install dependencies
@@ -71,24 +72,34 @@ bun run build
 | Build | esbuild + Bun |
 | Language | Vanilla JavaScript (ES Modules) |
 | AI Provider | OpenRouter (Claude, GPT-4o, Gemini) |
+| PDF Generation | pdf-lib + fontkit |
 | PDF Parsing | pdfjs-dist |
+| Fonts | Noto Serif/Sans (Cyrillic) |
 | Linting | Biome |
 
 ## Project Structure
 
 ```
 src/
-├── background-scripts/     # Service worker & API handlers
-│   ├── background.js       # Message routing hub
-│   ├── hh-internal-api.js  # HH.ru API client
-│   └── openrouter.js       # AI integration
-├── content-scripts/        # Injected into HH.ru pages
-│   ├── hh-vacancy.js       # Main UI & apply flow
-│   └── hh-vacancy.css      # Modal styles
-├── panel/                  # Extension side panel
-├── options/                # Settings page
-├── lib/                    # Shared utilities
-└── utils/                  # Helper functions
+├── core/                       # Shared core modules
+│   ├── ai/                     # AI integration (OpenRouter)
+│   ├── background/             # Message router
+│   ├── lib/                    # PDF generator, storage, prompts
+│   └── utils/                  # Network interceptor
+├── platforms/                  # Platform-specific code
+│   └── hh/                     # HH.ru implementation
+│       ├── api/                # Internal API client
+│       ├── content/            # Vacancy UI, parser, injector
+│       ├── handlers/           # Message handlers
+│       └── styles/             # CSS styles
+├── ui/                         # User interface
+│   ├── panel/                  # Side panel (AI settings)
+│   ├── options/                # Settings page
+│   └── shared/                 # Design system & components
+├── prompts/                    # YAML prompt templates
+├── background-scripts/         # Legacy background scripts
+├── content-scripts/            # Legacy content scripts
+└── fonts/                      # Noto Sans/Serif TTF fonts
 ```
 
 ## Scripts
