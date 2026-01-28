@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
-import type { Settings } from '@applyhawk/core';
-import styles from './SettingsPanel.module.css';
+import type { Settings } from "@applyhawk/core";
+import { useCallback, useEffect, useState } from "react";
+import styles from "./SettingsPanel.module.css";
 
 interface SettingsPanelProps {
   settings: Settings;
@@ -8,30 +8,159 @@ interface SettingsPanelProps {
   onClose: () => void;
 }
 
-const POPULAR_MODELS = [
-  { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4 (Recommended)' },
-  { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet' },
-  { id: 'openai/gpt-4o', name: 'GPT-4o' },
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini (Budget)' },
-  { id: 'google/gemini-pro-1.5', name: 'Gemini Pro 1.5' },
+interface OpenRouterModel {
+  id: string;
+  name: string;
+  contextLength: number;
+  pricing: { prompt?: string; completion?: string };
+  isRecommended: boolean;
+}
+
+const RECOMMENDED_MODELS = [
+  "anthropic/claude-sonnet-4",
+  "anthropic/claude-3.5-sonnet",
+  "openai/gpt-4o",
+  "openai/gpt-4o-mini",
+  "google/gemini-pro-1.5",
+  "google/gemini-flash-1.5",
+  "meta-llama/llama-3.1-70b-instruct",
+  "qwen/qwen-2.5-72b-instruct",
 ];
 
-export default function SettingsPanel({ settings, onSave, onClose }: SettingsPanelProps) {
+type ModelCategory = "recommended" | "all" | "budget";
+
+export default function SettingsPanel({
+  settings,
+  onSave,
+  onClose,
+}: SettingsPanelProps) {
   const [formData, setFormData] = useState({
-    openRouterApiKey: settings.openRouterApiKey || '',
-    preferredModel: settings.preferredModel || 'anthropic/claude-sonnet-4',
-    contactEmail: settings.contactEmail || '',
-    contactTelegram: settings.contactTelegram || '',
-    salaryExpectation: settings.salaryExpectation || '',
+    openRouterApiKey: settings.openRouterApiKey || "",
+    preferredModel: settings.preferredModel || "anthropic/claude-sonnet-4",
+    contactEmail: settings.contactEmail || "",
+    contactTelegram: settings.contactTelegram || "",
+    salaryExpectation: settings.salaryExpectation || "",
+  });
+
+  const [allModels, setAllModels] = useState<OpenRouterModel[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [modelError, setModelError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentCategory, setCurrentCategory] =
+    useState<ModelCategory>("recommended");
+
+  // Fetch models from OpenRouter API
+  useEffect(() => {
+    async function loadModels() {
+      setIsLoadingModels(true);
+      setModelError(null);
+      try {
+        const response = await fetch("https://openrouter.ai/api/v1/models");
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        const data = await response.json();
+        if (!data.data || !Array.isArray(data.data)) {
+          throw new Error("Invalid API response format");
+        }
+
+        const models: OpenRouterModel[] = data.data
+          .filter(
+            (model: { architecture?: { modality?: string }; id: string }) => {
+              const modality = model.architecture?.modality || "";
+              return (
+                (modality.includes("text") || !modality) &&
+                !model.id.includes("embed")
+              );
+            },
+          )
+          .map(
+            (model: {
+              id: string;
+              name?: string;
+              context_length?: number;
+              pricing?: { prompt?: string; completion?: string };
+            }) => ({
+              id: model.id,
+              name: formatModelName(model.name || model.id),
+              contextLength: model.context_length || 0,
+              pricing: model.pricing || {},
+              isRecommended: RECOMMENDED_MODELS.includes(model.id),
+            }),
+          )
+          .sort((a: OpenRouterModel, b: OpenRouterModel) => {
+            if (a.isRecommended && !b.isRecommended) return -1;
+            if (!a.isRecommended && b.isRecommended) return 1;
+            return a.name.localeCompare(b.name);
+          });
+
+        setAllModels(models);
+      } catch (err) {
+        console.error("Failed to load models:", err);
+        setModelError(
+          err instanceof Error ? err.message : "Failed to load models",
+        );
+      } finally {
+        setIsLoadingModels(false);
+      }
+    }
+    loadModels();
+  }, []);
+
+  const formatModelName = (name: string): string => {
+    return name
+      .replace(
+        /^(anthropic|openai|google|meta-llama|qwen|mistralai|cohere|deepseek|microsoft)\//,
+        "",
+      )
+      .replace(/-/g, " ")
+      .replace(/\b\w/g, (l) => l.toUpperCase());
+  };
+
+  const formatPrice = (pricing: { prompt?: string }): string => {
+    const promptPrice = Number.parseFloat(pricing?.prompt || "0");
+    if (promptPrice === 0) return "Free";
+    const perMillion = promptPrice * 1000000;
+    if (perMillion < 0.01) return "<$0.01/1M";
+    if (perMillion < 1) return `$${perMillion.toFixed(2)}/1M`;
+    return `$${perMillion.toFixed(0)}/1M`;
+  };
+
+  const formatContext = (length: number): string => {
+    if (!length) return "N/A";
+    if (length >= 1000000) return `${(length / 1000000).toFixed(1)}M`;
+    if (length >= 1000) return `${Math.round(length / 1000)}K`;
+    return `${length}`;
+  };
+
+  const filteredModels = allModels.filter((model) => {
+    const matchesSearch =
+      !searchQuery ||
+      model.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      model.name.toLowerCase().includes(searchQuery.toLowerCase());
+
+    let matchesCategory = true;
+    if (currentCategory === "recommended") {
+      matchesCategory = model.isRecommended;
+    } else if (currentCategory === "budget") {
+      const price = Number.parseFloat(model.pricing?.prompt || "0");
+      matchesCategory = price < 0.000001;
+    }
+
+    return matchesSearch && matchesCategory;
   });
 
   const handleChange = useCallback((field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   }, []);
 
   const handleSave = useCallback(() => {
     onSave(formData);
   }, [formData, onSave]);
+
+  const handleModelSelect = useCallback((modelId: string) => {
+    setFormData((prev) => ({ ...prev, preferredModel: modelId }));
+  }, []);
 
   return (
     <div className={styles.panel}>
@@ -52,12 +181,16 @@ export default function SettingsPanel({ settings, onSave, onClose }: SettingsPan
               type="password"
               className="input"
               value={formData.openRouterApiKey}
-              onChange={(e) => handleChange('openRouterApiKey', e.target.value)}
+              onChange={(e) => handleChange("openRouterApiKey", e.target.value)}
               placeholder="sk-or-..."
             />
             <p className={styles.hint}>
-              Get your API key at{' '}
-              <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">
+              Get your API key at{" "}
+              <a
+                href="https://openrouter.ai/keys"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 openrouter.ai/keys
               </a>
             </p>
@@ -65,17 +198,87 @@ export default function SettingsPanel({ settings, onSave, onClose }: SettingsPan
 
           <div className="field">
             <label className="label">AI Model</label>
-            <select
+
+            {/* Category buttons */}
+            <div className={styles.modelCategories}>
+              <button
+                type="button"
+                className={`${styles.categoryBtn} ${currentCategory === "recommended" ? styles.active : ""}`}
+                onClick={() => setCurrentCategory("recommended")}
+              >
+                Top
+              </button>
+              <button
+                type="button"
+                className={`${styles.categoryBtn} ${currentCategory === "all" ? styles.active : ""}`}
+                onClick={() => setCurrentCategory("all")}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                className={`${styles.categoryBtn} ${currentCategory === "budget" ? styles.active : ""}`}
+                onClick={() => setCurrentCategory("budget")}
+              >
+                Budget
+              </button>
+            </div>
+
+            {/* Search input */}
+            <input
+              type="text"
               className="input"
-              value={formData.preferredModel}
-              onChange={(e) => handleChange('preferredModel', e.target.value)}
-            >
-              {POPULAR_MODELS.map(model => (
-                <option key={model.id} value={model.id}>
-                  {model.name}
-                </option>
-              ))}
-            </select>
+              placeholder="Search models..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ marginBottom: "0.75rem" }}
+            />
+
+            {/* Model list */}
+            <div className={styles.modelList}>
+              {isLoadingModels ? (
+                <div className={styles.modelLoading}>
+                  <span className={styles.modelSpinner} />
+                  <span>Loading models...</span>
+                </div>
+              ) : modelError ? (
+                <div className={styles.modelError}>
+                  <span>Failed to load models: {modelError}</span>
+                </div>
+              ) : filteredModels.length === 0 ? (
+                <div className={styles.modelEmpty}>
+                  <span>No models found</span>
+                </div>
+              ) : (
+                filteredModels.slice(0, 50).map((model) => (
+                  <div
+                    key={model.id}
+                    className={`${styles.modelItem} ${formData.preferredModel === model.id ? styles.selected : ""}`}
+                    onClick={() => handleModelSelect(model.id)}
+                  >
+                    <div className={styles.modelRadio} />
+                    <div className={styles.modelContent}>
+                      <div className={styles.modelName}>{model.name}</div>
+                      <div className={styles.modelMeta}>
+                        <span className={styles.modelTag}>
+                          {formatPrice(model.pricing)}
+                        </span>
+                        <span className={styles.modelTag}>
+                          {formatContext(model.contextLength)} ctx
+                        </span>
+                        {model.isRecommended && (
+                          <span
+                            className={`${styles.modelTag} ${styles.recommended}`}
+                          >
+                            Recommended
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </section>
 
@@ -93,7 +296,7 @@ export default function SettingsPanel({ settings, onSave, onClose }: SettingsPan
                 type="email"
                 className="input"
                 value={formData.contactEmail}
-                onChange={(e) => handleChange('contactEmail', e.target.value)}
+                onChange={(e) => handleChange("contactEmail", e.target.value)}
                 placeholder="john@example.com"
               />
             </div>
@@ -103,7 +306,9 @@ export default function SettingsPanel({ settings, onSave, onClose }: SettingsPan
                 type="text"
                 className="input"
                 value={formData.contactTelegram}
-                onChange={(e) => handleChange('contactTelegram', e.target.value)}
+                onChange={(e) =>
+                  handleChange("contactTelegram", e.target.value)
+                }
                 placeholder="@johndoe"
               />
             </div>
@@ -115,7 +320,9 @@ export default function SettingsPanel({ settings, onSave, onClose }: SettingsPan
               type="text"
               className="input"
               value={formData.salaryExpectation}
-              onChange={(e) => handleChange('salaryExpectation', e.target.value)}
+              onChange={(e) =>
+                handleChange("salaryExpectation", e.target.value)
+              }
               placeholder="$150,000 - $180,000"
             />
           </div>
@@ -125,9 +332,9 @@ export default function SettingsPanel({ settings, onSave, onClose }: SettingsPan
         <section className={styles.privacyNote}>
           <h4>🔒 Privacy</h4>
           <p>
-            Your data is stored locally in your browser. We don't have access to your
-            resume, job applications, or API key. All AI processing happens through
-            your own OpenRouter account.
+            Your data is stored locally in your browser. We don't have access to
+            your resume, job applications, or API key. All AI processing happens
+            through your own OpenRouter account.
           </p>
         </section>
       </div>

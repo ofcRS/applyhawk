@@ -17,6 +17,32 @@
   margin-bottom: 2rem;
 }
 
+.apiKeyWarning {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+}
+
+.apiKeyWarning span:first-child {
+  font-size: 1.25rem;
+}
+
+.apiKeyWarning strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #92400e;
+}
+
+.apiKeyWarning p {
+  font-size: 0.875rem;
+  color: #92400e;
+  margin: 0;
+}
+
 .uploadBox {
   position: relative;
 }
@@ -57,9 +83,11 @@
   outline-offset: 2px;
 }
 
-.fileInput:disabled + .uploadLabel {
+.fileInput:disabled + .uploadLabel,
+.uploadLabel.disabled {
   cursor: not-allowed;
-  opacity: 0.7;
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 .uploadIcon {
@@ -101,7 +129,7 @@
 
 .divider::before,
 .divider::after {
-  content: '';
+  content: "";
   flex: 1;
   height: 1px;
   background: var(--color-border);

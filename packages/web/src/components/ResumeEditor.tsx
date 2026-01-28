@@ -1,29 +1,42 @@
-import { useState, useCallback, useRef } from 'react';
-import type { Resume, Experience, Education } from '@applyhawk/core';
-import * as pdfjsLib from 'pdfjs-dist';
-import styles from './ResumeEditor.module.css';
+import type { Education, Experience, Resume } from "@applyhawk/core";
+import * as pdfjsLib from "pdfjs-dist";
+import { useCallback, useRef, useState } from "react";
+import styles from "./ResumeEditor.module.css";
 
 // Set up PDF.js worker from CDN (avoids MIME type issues with self-hosted .mjs files)
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.4.149/pdf.worker.min.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.4.149/pdf.worker.min.mjs";
 
 interface ResumeEditorProps {
   resume: Resume | null;
   onSave: (resume: Partial<Resume>) => Promise<void>;
   onContinue: () => void;
-  onParsePDF?: (pdfText: string) => Promise<{ success: boolean; resume: Resume }>;
+  onParsePDF?: (
+    pdfText: string,
+  ) => Promise<{ success: boolean; resume: Resume }>;
   isParsingPDF?: boolean;
+  isApiKeyConfigured?: boolean;
 }
 
-export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, isParsingPDF = false }: ResumeEditorProps) {
-  const [formData, setFormData] = useState<Resume>(resume || {
-    fullName: '',
-    title: '',
-    summary: '',
-    experience: [],
-    education: [],
-    skills: [],
-    contacts: { email: '', phone: '', telegram: '', linkedin: '' },
-  });
+export default function ResumeEditor({
+  resume,
+  onSave,
+  onContinue,
+  onParsePDF,
+  isParsingPDF = false,
+  isApiKeyConfigured = true,
+}: ResumeEditorProps) {
+  const [formData, setFormData] = useState<Resume>(
+    resume || {
+      fullName: "",
+      title: "",
+      summary: "",
+      experience: [],
+      education: [],
+      skills: [],
+      contacts: { email: "", phone: "", telegram: "", linkedin: "" },
+    },
+  );
 
   const [isSaving, setIsSaving] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
@@ -33,122 +46,147 @@ export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, i
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
-    let fullText = '';
+    let fullText = "";
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
       const pageText = textContent.items
-        .map((item) => ('str' in item ? item.str : ''))
-        .join(' ');
-      fullText += pageText + '\n';
+        .map((item) => ("str" in item ? item.str : ""))
+        .join(" ");
+      fullText += pageText + "\n";
     }
 
     return fullText.trim();
   };
 
-  const handlePdfUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !onParsePDF) return;
+  const handlePdfUpload = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file || !onParsePDF) return;
 
-    setPdfError(null);
+      setPdfError(null);
 
-    try {
-      const pdfText = await extractTextFromPdf(file);
+      try {
+        const pdfText = await extractTextFromPdf(file);
 
-      if (pdfText.length < 100) {
-        setPdfError('Could not extract text from PDF. Make sure it contains selectable text.');
-        return;
+        if (pdfText.length < 100) {
+          setPdfError(
+            "Could not extract text from PDF. Make sure it contains selectable text.",
+          );
+          return;
+        }
+
+        const result = await onParsePDF(pdfText);
+
+        if (result.success && result.resume) {
+          setFormData({
+            fullName: result.resume.fullName || "",
+            title: result.resume.title || "",
+            summary: result.resume.summary || "",
+            experience: result.resume.experience || [],
+            education: result.resume.education || [],
+            skills: result.resume.skills || [],
+            contacts: result.resume.contacts || {
+              email: "",
+              phone: "",
+              telegram: "",
+              linkedin: "",
+            },
+          });
+        }
+      } catch (err) {
+        console.error("PDF parsing failed:", err);
+        setPdfError(err instanceof Error ? err.message : "Failed to parse PDF");
+      } finally {
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
       }
-
-      const result = await onParsePDF(pdfText);
-
-      if (result.success && result.resume) {
-        setFormData({
-          fullName: result.resume.fullName || '',
-          title: result.resume.title || '',
-          summary: result.resume.summary || '',
-          experience: result.resume.experience || [],
-          education: result.resume.education || [],
-          skills: result.resume.skills || [],
-          contacts: result.resume.contacts || { email: '', phone: '', telegram: '', linkedin: '' },
-        });
-      }
-    } catch (err) {
-      console.error('PDF parsing failed:', err);
-      setPdfError(err instanceof Error ? err.message : 'Failed to parse PDF');
-    } finally {
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  }, [onParsePDF]);
+    },
+    [onParsePDF],
+  );
 
   const handleChange = useCallback((field: keyof Resume, value: unknown) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   }, []);
 
   const handleContactChange = useCallback((field: string, value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       contacts: { ...prev.contacts, [field]: value },
     }));
   }, []);
 
-  const handleExperienceChange = useCallback((index: number, field: keyof Experience, value: string) => {
-    setFormData(prev => {
-      const newExp = [...prev.experience];
-      newExp[index] = { ...newExp[index], [field]: value };
-      return { ...prev, experience: newExp };
-    });
-  }, []);
+  const handleExperienceChange = useCallback(
+    (index: number, field: keyof Experience, value: string) => {
+      setFormData((prev) => {
+        const newExp = [...prev.experience];
+        newExp[index] = { ...newExp[index], [field]: value };
+        return { ...prev, experience: newExp };
+      });
+    },
+    [],
+  );
 
   const addExperience = useCallback(() => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       experience: [
         ...prev.experience,
-        { company: '', position: '', startDate: '', endDate: '', description: '' },
+        {
+          company: "",
+          position: "",
+          startDate: "",
+          endDate: "",
+          description: "",
+        },
       ],
     }));
   }, []);
 
   const removeExperience = useCallback((index: number) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       experience: prev.experience.filter((_, i) => i !== index),
     }));
   }, []);
 
-  const handleEducationChange = useCallback((index: number, field: keyof Education, value: string) => {
-    setFormData(prev => {
-      const newEdu = [...prev.education];
-      newEdu[index] = { ...newEdu[index], [field]: value };
-      return { ...prev, education: newEdu };
-    });
-  }, []);
+  const handleEducationChange = useCallback(
+    (index: number, field: keyof Education, value: string) => {
+      setFormData((prev) => {
+        const newEdu = [...prev.education];
+        newEdu[index] = { ...newEdu[index], [field]: value };
+        return { ...prev, education: newEdu };
+      });
+    },
+    [],
+  );
 
   const addEducation = useCallback(() => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      education: [
-        ...prev.education,
-        { institution: '', degree: '', year: '' },
-      ],
+      education: [...prev.education, { institution: "", degree: "", year: "" }],
     }));
   }, []);
 
   const removeEducation = useCallback((index: number) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       education: prev.education.filter((_, i) => i !== index),
     }));
   }, []);
 
-  const handleSkillsChange = useCallback((value: string) => {
-    const skills = value.split(',').map(s => s.trim()).filter(Boolean);
-    handleChange('skills', skills);
-  }, [handleChange]);
+  const handleSkillsChange = useCallback(
+    (value: string) => {
+      const skills = value
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      handleChange("skills", skills);
+    },
+    [handleChange],
+  );
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
@@ -169,42 +207,61 @@ export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, i
   return (
     <div className={styles.editor}>
       <h2>Your Resume</h2>
-      <p className={styles.subtitle}>Fill in your information once, personalize for every job.</p>
+      <p className={styles.subtitle}>
+        Fill in your information once, personalize for every job.
+      </p>
 
       {/* PDF Upload */}
-      {onParsePDF && (
-        <section className={styles.uploadSection}>
-          <div className={styles.uploadBox}>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf"
-              onChange={handlePdfUpload}
-              disabled={isParsingPDF}
-              className={styles.fileInput}
-              id="pdf-upload"
-            />
-            <label htmlFor="pdf-upload" className={styles.uploadLabel}>
-              {isParsingPDF ? (
-                <>
-                  <span className={styles.uploadSpinner} />
-                  <span>Parsing your resume...</span>
-                </>
-              ) : (
-                <>
-                  <span className={styles.uploadIcon}>📄</span>
-                  <span>Upload existing resume (PDF)</span>
-                  <span className={styles.uploadHint}>AI will extract your information automatically</span>
-                </>
-              )}
-            </label>
+      <section className={styles.uploadSection}>
+        {!isApiKeyConfigured && (
+          <div className={styles.apiKeyWarning}>
+            <span>⚠️</span>
+            <div>
+              <strong>API Key Required</strong>
+              <p>
+                Configure your OpenRouter API key in Settings to enable
+                AI-powered PDF parsing.
+              </p>
+            </div>
           </div>
-          {pdfError && <p className={styles.uploadError}>{pdfError}</p>}
-          <div className={styles.divider}>
-            <span>or fill manually</span>
-          </div>
-        </section>
-      )}
+        )}
+        <div className={styles.uploadBox}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf"
+            onChange={handlePdfUpload}
+            disabled={isParsingPDF || !isApiKeyConfigured}
+            className={styles.fileInput}
+            id="pdf-upload"
+          />
+          <label
+            htmlFor="pdf-upload"
+            className={`${styles.uploadLabel} ${!isApiKeyConfigured ? styles.disabled : ""}`}
+          >
+            {isParsingPDF ? (
+              <>
+                <span className={styles.uploadSpinner} />
+                <span>Parsing your resume...</span>
+              </>
+            ) : (
+              <>
+                <span className={styles.uploadIcon}>📄</span>
+                <span>Upload existing resume (PDF)</span>
+                <span className={styles.uploadHint}>
+                  {isApiKeyConfigured
+                    ? "AI will extract your information automatically"
+                    : "Requires API key to parse PDF"}
+                </span>
+              </>
+            )}
+          </label>
+        </div>
+        {pdfError && <p className={styles.uploadError}>{pdfError}</p>}
+        <div className={styles.divider}>
+          <span>or fill manually</span>
+        </div>
+      </section>
 
       {/* Basic Info */}
       <section className={styles.section}>
@@ -216,7 +273,7 @@ export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, i
               type="text"
               className="input"
               value={formData.fullName}
-              onChange={(e) => handleChange('fullName', e.target.value)}
+              onChange={(e) => handleChange("fullName", e.target.value)}
               placeholder="John Doe"
             />
           </div>
@@ -226,7 +283,7 @@ export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, i
               type="text"
               className="input"
               value={formData.title}
-              onChange={(e) => handleChange('title', e.target.value)}
+              onChange={(e) => handleChange("title", e.target.value)}
               placeholder="Senior Software Engineer"
             />
           </div>
@@ -235,8 +292,8 @@ export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, i
           <label className="label">Professional Summary</label>
           <textarea
             className="input textarea"
-            value={formData.summary || ''}
-            onChange={(e) => handleChange('summary', e.target.value)}
+            value={formData.summary || ""}
+            onChange={(e) => handleChange("summary", e.target.value)}
             placeholder="Brief overview of your experience and career goals..."
             rows={3}
           />
@@ -252,8 +309,8 @@ export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, i
             <input
               type="email"
               className="input"
-              value={formData.contacts.email || ''}
-              onChange={(e) => handleContactChange('email', e.target.value)}
+              value={formData.contacts.email || ""}
+              onChange={(e) => handleContactChange("email", e.target.value)}
               placeholder="john@example.com"
             />
           </div>
@@ -262,8 +319,8 @@ export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, i
             <input
               type="tel"
               className="input"
-              value={formData.contacts.phone || ''}
-              onChange={(e) => handleContactChange('phone', e.target.value)}
+              value={formData.contacts.phone || ""}
+              onChange={(e) => handleContactChange("phone", e.target.value)}
               placeholder="+1 234 567 8900"
             />
           </div>
@@ -272,8 +329,8 @@ export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, i
             <input
               type="text"
               className="input"
-              value={formData.contacts.linkedin || ''}
-              onChange={(e) => handleContactChange('linkedin', e.target.value)}
+              value={formData.contacts.linkedin || ""}
+              onChange={(e) => handleContactChange("linkedin", e.target.value)}
               placeholder="linkedin.com/in/johndoe"
             />
           </div>
@@ -282,8 +339,8 @@ export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, i
             <input
               type="text"
               className="input"
-              value={formData.contacts.telegram || ''}
-              onChange={(e) => handleContactChange('telegram', e.target.value)}
+              value={formData.contacts.telegram || ""}
+              onChange={(e) => handleContactChange("telegram", e.target.value)}
               placeholder="@johndoe"
             />
           </div>
@@ -294,12 +351,18 @@ export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, i
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
           <h3>Work Experience *</h3>
-          <button type="button" className="btn btn-secondary" onClick={addExperience}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={addExperience}
+          >
             + Add Position
           </button>
         </div>
         {formData.experience.length === 0 && (
-          <p className={styles.empty}>No work experience added yet. Click "Add Position" to start.</p>
+          <p className={styles.empty}>
+            No work experience added yet. Click "Add Position" to start.
+          </p>
         )}
         {formData.experience.map((exp, index) => (
           <div key={index} className={styles.experienceCard}>
@@ -319,8 +382,10 @@ export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, i
                 <input
                   type="text"
                   className="input"
-                  value={exp.company || exp.companyName || ''}
-                  onChange={(e) => handleExperienceChange(index, 'company', e.target.value)}
+                  value={exp.company || exp.companyName || ""}
+                  onChange={(e) =>
+                    handleExperienceChange(index, "company", e.target.value)
+                  }
                   placeholder="Acme Inc."
                 />
               </div>
@@ -330,7 +395,9 @@ export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, i
                   type="text"
                   className="input"
                   value={exp.position}
-                  onChange={(e) => handleExperienceChange(index, 'position', e.target.value)}
+                  onChange={(e) =>
+                    handleExperienceChange(index, "position", e.target.value)
+                  }
                   placeholder="Software Engineer"
                 />
               </div>
@@ -339,8 +406,10 @@ export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, i
                 <input
                   type="month"
                   className="input"
-                  value={exp.startDate?.substring(0, 7) || ''}
-                  onChange={(e) => handleExperienceChange(index, 'startDate', e.target.value)}
+                  value={exp.startDate?.substring(0, 7) || ""}
+                  onChange={(e) =>
+                    handleExperienceChange(index, "startDate", e.target.value)
+                  }
                 />
               </div>
               <div className="field">
@@ -348,8 +417,10 @@ export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, i
                 <input
                   type="month"
                   className="input"
-                  value={exp.endDate?.substring(0, 7) || ''}
-                  onChange={(e) => handleExperienceChange(index, 'endDate', e.target.value)}
+                  value={exp.endDate?.substring(0, 7) || ""}
+                  onChange={(e) =>
+                    handleExperienceChange(index, "endDate", e.target.value)
+                  }
                   placeholder="Leave empty if current"
                 />
               </div>
@@ -358,8 +429,10 @@ export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, i
               <label className="label">Description & Achievements</label>
               <textarea
                 className="input textarea"
-                value={exp.description || ''}
-                onChange={(e) => handleExperienceChange(index, 'description', e.target.value)}
+                value={exp.description || ""}
+                onChange={(e) =>
+                  handleExperienceChange(index, "description", e.target.value)
+                }
                 placeholder="- Developed features that improved user engagement by 25%&#10;- Led migration to microservices architecture&#10;- Mentored 3 junior developers"
                 rows={4}
               />
@@ -376,7 +449,7 @@ export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, i
           <input
             type="text"
             className="input"
-            value={formData.skills.join(', ')}
+            value={formData.skills.join(", ")}
             onChange={(e) => handleSkillsChange(e.target.value)}
             placeholder="JavaScript, React, Node.js, Python, AWS, Docker"
           />
@@ -387,7 +460,11 @@ export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, i
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
           <h3>Education</h3>
-          <button type="button" className="btn btn-secondary" onClick={addEducation}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={addEducation}
+          >
             + Add Education
           </button>
         </div>
@@ -409,8 +486,10 @@ export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, i
                 <input
                   type="text"
                   className="input"
-                  value={edu.institution || edu.name || ''}
-                  onChange={(e) => handleEducationChange(index, 'institution', e.target.value)}
+                  value={edu.institution || edu.name || ""}
+                  onChange={(e) =>
+                    handleEducationChange(index, "institution", e.target.value)
+                  }
                   placeholder="Stanford University"
                 />
               </div>
@@ -419,8 +498,10 @@ export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, i
                 <input
                   type="text"
                   className="input"
-                  value={edu.degree || edu.faculty || ''}
-                  onChange={(e) => handleEducationChange(index, 'degree', e.target.value)}
+                  value={edu.degree || edu.faculty || ""}
+                  onChange={(e) =>
+                    handleEducationChange(index, "degree", e.target.value)
+                  }
                   placeholder="B.S. Computer Science"
                 />
               </div>
@@ -429,8 +510,10 @@ export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, i
                 <input
                   type="text"
                   className="input"
-                  value={edu.year || edu.graduationYear || ''}
-                  onChange={(e) => handleEducationChange(index, 'year', e.target.value)}
+                  value={edu.year || edu.graduationYear || ""}
+                  onChange={(e) =>
+                    handleEducationChange(index, "year", e.target.value)
+                  }
                   placeholder="2020"
                 />
               </div>
@@ -447,7 +530,7 @@ export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, i
           onClick={handleSave}
           disabled={isSaving}
         >
-          {isSaving ? 'Saving...' : 'Save'}
+          {isSaving ? "Saving..." : "Save"}
         </button>
         <button
           type="button"
