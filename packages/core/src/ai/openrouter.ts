@@ -269,11 +269,9 @@ export class OpenRouterClient {
 
     const effectiveAggressiveness =
       aggressiveness ??
+      settings?.aggressiveFit?.aggressivenessOverride ??
       (fitAssessment
-        ? calculateAggressiveness(
-            fitAssessment.fitScore,
-            settings?.aggressiveFit?.aggressivenessOverride ?? null
-          )
+        ? calculateAggressiveness(fitAssessment.fitScore, null)
         : 0.5);
 
     const fitSection = fitAssessment
