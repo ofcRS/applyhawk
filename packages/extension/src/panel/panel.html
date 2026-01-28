@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ApplyHawk</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <div class="panel">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+          <path d="M2 17l10 5 10-5"></path>
+          <path d="M2 12l10 5 10-5"></path>
+        </svg>
+        <span>ApplyHawk</span>
+      </div>
+    </header>
+
+    <!-- HH.ru Auth Status -->
+    <section id="hh-status-section" class="card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        Статус подключения
+      </div>
+      <div class="auth-info" id="hh-status">
+        <div class="icon-circle" id="hh-status-icon">
+          <div class="spinner" style="width:16px;height:16px;border-width:2px"></div>
+        </div>
+        <div>
+          <h3 id="hh-status-title">Проверка...</h3>
+          <p id="hh-status-text">Проверяем авторизацию на HH.ru</p>
+        </div>
+      </div>
+      <a href="https://hh.ru" target="_blank" class="btn btn-ghost btn-sm" id="open-hh-btn" style="display:none; margin-top: 8px;">
+        Открыть HH.ru
+      </a>
+    </section>
+
+    <!-- HH.ru Resumes Section -->
+    <section id="resumes-section" class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10 9 9 9 8 9"/>
+          </svg>
+          Мои резюме
+        </div>
+        <button id="refresh-resumes-btn" class="btn-icon" title="Обновить">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+        </button>
+      </div>
+      <div id="resumes-list" class="resumes-list">
+        <div class="resumes-loading">
+          <div class="spinner" style="width:16px;height:16px;border-width:2px"></div>
+          <span>Загрузка...</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Universal CV Section -->
+    <section id="universal-section" class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <path d="M12 18v-6"/>
+            <path d="M9 15l3 3 3-3"/>
+          </svg>
+          PDF Resume
+        </div>
+      </div>
+      <p class="card-description">Create PDF resume for any job description</p>
+
+      <div class="form-group">
+        <textarea
+          id="job-description-input"
+          class="input job-description-textarea"
+          placeholder="Paste job description here..."
+          rows="5"
+        ></textarea>
+      </div>
+
+      <!-- Aggressiveness Settings -->
+      <div class="aggressiveness-settings">
+        <div class="aggressiveness-header">
+          <label for="pdf-aggressiveness">Aggressiveness: <span id="pdf-aggressiveness-value">50%</span></label>
+          <button id="aggressiveness-info-btn" class="btn-icon btn-xs" title="What is aggressiveness?">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </button>
+        </div>
+        <input type="range" id="pdf-aggressiveness" class="range" min="0" max="100" value="50">
+        <div class="aggressiveness-labels">
+          <span>Conservative</span>
+          <span>Aggressive</span>
+        </div>
+        <div id="aggressiveness-tooltip" class="aggressiveness-tooltip hidden">
+          <strong>0-20%:</strong> Light optimization, terminology alignment<br>
+          <strong>30-50%:</strong> Active rewriting, skill prioritization<br>
+          <strong>60-80%:</strong> Heavy transformation, keyword injection<br>
+          <strong>90-100%:</strong> Complete rewrite for maximum fit
+        </div>
+      </div>
+
+      <div id="universal-progress" class="universal-progress hidden">
+        <div class="progress-step" data-step="parse">
+          <span class="step-indicator"></span>
+          <span class="step-text">Analyzing job description...</span>
+        </div>
+        <div class="progress-step" data-step="personalize">
+          <span class="step-indicator"></span>
+          <span class="step-text">Personalizing resume...</span>
+        </div>
+        <div class="progress-step" data-step="generate">
+          <span class="step-indicator"></span>
+          <span class="step-text">Generating PDF...</span>
+        </div>
+      </div>
+
+      <div id="universal-error" class="universal-error hidden"></div>
+
+      <button id="generate-pdf-btn" class="btn btn-primary btn-block">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <path d="M12 18v-6"/>
+          <path d="M9 15l3 3 3-3"/>
+        </svg>
+        Generate PDF Resume
+      </button>
+    </section>
+
+    <!-- Research Mode Section -->
+    <section id="research-section" class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="M21 21l-4.35-4.35"></path>
+          </svg>
+          Research Mode
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="research-toggle">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <p class="card-description">Перехват API-запросов HH.ru для анализа</p>
+
+      <div id="research-stats" class="research-stats hidden">
+        <div class="research-counter">
+          <span class="counter-value" id="captured-count">0</span>
+          <span class="counter-label">запросов</span>
+        </div>
+        <div class="research-actions">
+          <button id="view-requests-btn" class="btn btn-sm btn-secondary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            Просмотр
+          </button>
+          <button id="export-requests-btn" class="btn btn-sm btn-secondary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path>
+            </svg>
+            Экспорт
+          </button>
+          <button id="clear-requests-btn" class="btn btn-sm btn-ghost btn-danger">
+            Очистить
+          </button>
+        </div>
+      </div>
+
+      <!-- Request Viewer Modal -->
+      <div id="request-viewer" class="request-viewer hidden">
+        <div class="request-viewer-header">
+          <span>Перехваченные запросы</span>
+          <button id="close-viewer-btn" class="btn btn-icon btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="request-list" id="request-list">
+          <!-- Requests will be populated here -->
+        </div>
+      </div>
+    </section>
+
+    <!-- AI Model Section -->
+    <section id="model-section" class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+            <polyline points="2 17 12 22 22 17"/>
+            <polyline points="2 12 12 17 22 12"/>
+          </svg>
+          AI Модель
+        </div>
+        <button id="refresh-models-btn" class="btn-icon" title="Обновить список">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Model Search -->
+      <div class="form-group">
+        <div class="search-input">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="M21 21l-4.35-4.35"></path>
+          </svg>
+          <input type="text" id="model-search" class="input" placeholder="Поиск модели...">
+        </div>
+      </div>
+
+      <!-- Model Categories -->
+      <div class="model-categories">
+        <button class="category-btn active" data-category="recommended">Топ</button>
+        <button class="category-btn" data-category="all">Все</button>
+        <button class="category-btn" data-category="cheap">Бюджет</button>
+      </div>
+
+      <!-- Model List -->
+      <div id="model-list" class="model-list">
+        <div class="model-loading">
+          <div class="spinner"></div>
+          <span>Загрузка моделей...</span>
+        </div>
+      </div>
+
+      <!-- Selected Model Info -->
+      <div id="selected-model-info" class="selected-model hidden">
+        <div class="selected-model-header">
+          <span class="label">Выбрана:</span>
+          <span id="selected-model-name" class="model-name"></span>
+        </div>
+        <div class="selected-model-details">
+          <span id="selected-model-price" class="price-tag"></span>
+          <span id="selected-model-context" class="context-tag"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- API Key Section -->
+    <section class="card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+        </svg>
+        API Ключ
+      </div>
+      <div class="form-group">
+        <div class="input-with-action">
+          <input type="password" id="api-key-input" class="input" placeholder="sk-or-v1-...">
+          <button id="toggle-api-key" class="btn-icon" title="Показать/скрыть">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+        <a href="https://openrouter.ai/keys" target="_blank" class="help-link">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          Получить ключ OpenRouter
+        </a>
+      </div>
+    </section>
+
+    <!-- Actions -->
+    <section class="actions">
+      <button id="save-btn" class="btn btn-primary btn-block">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        Сохранить
+      </button>
+      <button id="settings-btn" class="btn btn-secondary btn-block">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        Настройки резюме
+      </button>
+    </section>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+  </div>
+
+  <script src="panel.js" type="module"></script>
+</body>
+</html>

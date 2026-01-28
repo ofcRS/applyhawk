@@ -1,0 +1,111 @@
+name: cover_letter_generation
+description: Generate a personalized cover letter based on PERSONALIZED resume
+temperature: 0.4
+max_tokens: 1500
+
+system: |
+  You generate cover letters using the PERSONALIZED resume data provided. Output JSON.
+
+user: |
+  VACANCY:
+  {{vacancy.name}} at {{vacancy.company}}
+  {{vacancy.description}}
+  Required: {{vacancy.keySkills}}
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  !! USE THIS PERSONALIZED RESUME (not original CV) !!
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  PERSONALIZED TITLE: {{personalized.title}}
+  PERSONALIZED SKILLS: {{personalized.keySkills}}
+  PERSONALIZED EXPERIENCE:
+  {{personalized.experienceFormatted}}
+
+  CANDIDATE CONTACTS: {{contacts}}
+  SALARY: {{salaryExpectation}}
+
+  AGGRESSIVENESS: {{aggressiveness}} (0.0-1.0)
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  STEP 1: EXTRACT
+
+  ```json
+  {
+    "extraction": {
+      "language": "ru/en from vacancy",
+      "top3_tech_from_vacancy": ["from {{vacancy.keySkills}}"],
+      "top3_tech_from_personalized_resume": ["from {{personalized.keySkills}}"],
+      "unique_role_detail": "specific non-generic detail about THIS role",
+      "salary_required": true/false,
+      "special_instructions": "any 'укажите/mention' or null",
+      "best_achievement_from_personalized": "pick the strongest bullet point with metrics from PERSONALIZED EXPERIENCE above"
+    }
+  }
+  ```
+
+  STEP 2: APPLY AGGRESSIVENESS TO CLAIMS
+
+  Aggressiveness affects HOW BOLDLY you claim experience:
+
+  0.0-0.3 (Conservative):
+  - Use hedged language: "есть опыт работы с", "работал с", "знаком с"
+  - Only claim what's explicitly in personalized resume
+  - Focus on transferable skills
+  - EN: "experience with", "familiar with", "worked with"
+
+  0.4-0.6 (Moderate):
+  - Direct claims: "разрабатывал", "реализовал", "оптимизировал"
+  - Claim all skills from personalized.keySkills confidently
+  - EN: "built", "developed", "implemented"
+
+  0.7-0.85 (Aggressive):
+  - Strong ownership: "отвечал за", "проектировал архитектуру", "руководил разработкой"
+  - Claim deep expertise in vacancy technologies
+  - Add scale/impact language
+  - EN: "led", "architected", "owned"
+
+  0.9-1.0 (Maximum):
+  - Expert-level claims: "эксперт в", "глубокая экспертиза", "специализируюсь на"
+  - Present as ideal candidate for THIS specific role
+  - Claim all vacancy requirements as core competencies
+  - EN: "expert in", "specialized in", "deep expertise"
+
+  STEP 3: GENERATE LETTER (3-4 sentences)
+
+  Sentence 1: Use "unique_role_detail" — NOT company name, NOT job title
+  Sentence 2-3: Use "best_achievement_from_personalized" + technologies from "top3_tech_from_personalized_resume"
+  Sentence 4: Contacts + salary (if salary_required=true)
+
+  CRITICAL:
+  - Take achievements FROM PERSONALIZED EXPERIENCE ABOVE, not from your imagination
+  - The personalized resume already contains rewritten bullets with required tech — USE THEM
+  - Numbers and metrics in cover letter MUST come from personalized experience
+
+  BANNED (instant fail):
+  - "привлекает меня", "I am excited"
+  - "ваша компания", "your company"
+  - "идеально", "perfect fit"
+  - Starting with job title or company name
+
+  ```json
+  {
+    "extraction": { ... },
+    "aggressiveness_applied": "description of tone used",
+    "cover_letter": "3-4 sentences, plain text"
+  }
+  ```
+
+  OUTPUT: JSON only.
+
+# Template variables:
+# {{vacancy.name}} - Job title
+# {{vacancy.company}} - Company name
+# {{vacancy.description}} - Job description
+# {{vacancy.keySkills}} - Required skills from vacancy
+# {{personalized.title}} - Title from personalized resume
+# {{personalized.keySkills}} - Skills from personalized resume (JSON array as string)
+# {{personalized.experienceFormatted}} - Formatted experience from personalized resume
+# {{contacts}} - Contact info
+# {{salaryExpectation}} - Expected salary
+# {{aggressiveness}} - 0.0-1.0 value (same as used for resume)

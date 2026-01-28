@@ -1,0 +1,53 @@
+name: pdf_parser
+description: Parse resume text from PDF into structured format
+temperature: 0.2
+max_tokens: 3000
+
+system: |
+  You are a resume parser. Extract structured data from raw resume text.
+
+user: |
+  RAW RESUME TEXT:
+  {{pdfText}}
+
+  TASK:
+  Parse this resume text into structured JSON format.
+
+  OUTPUT FORMAT (JSON only):
+  {
+    "fullName": "Full Name",
+    "title": "Current/Desired Position",
+    "summary": "Professional summary if present",
+    "experience": [
+      {
+        "company": "Company Name",
+        "position": "Job Title",
+        "startDate": "YYYY-MM-DD or YYYY-MM",
+        "endDate": "YYYY-MM-DD or YYYY-MM or null if current",
+        "description": "Job responsibilities and achievements",
+        "achievements": ["achievement 1", "achievement 2"]
+      }
+    ],
+    "education": [
+      {
+        "institution": "University/School Name",
+        "degree": "Degree/Certification",
+        "year": "Graduation year"
+      }
+    ],
+    "skills": ["skill1", "skill2", "..."],
+    "contacts": {
+      "email": "email@example.com",
+      "phone": "+1234567890",
+      "linkedin": "linkedin.com/in/username",
+      "telegram": "@username"
+    }
+  }
+
+  PARSING RULES:
+  - Extract all available information
+  - Use null for missing optional fields
+  - Normalize dates to YYYY-MM-DD where possible
+  - Split skills into individual items
+  - Preserve original language of the resume
+  - If dates are ambiguous, make reasonable assumptions

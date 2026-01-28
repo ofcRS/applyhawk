@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ApplyHawk - Настройки</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>ApplyHawk - Настройки</h1>
+    </header>
+
+    <main>
+      <!-- API Settings -->
+      <section class="section">
+        <h2 class="section-title">API настройки</h2>
+
+        <div class="form-group">
+          <label for="openrouter-key">OpenRouter API ключ</label>
+          <input type="password" id="openrouter-key" class="input" placeholder="sk-or-...">
+          <span class="help-text">
+            Получите ключ на <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label for="ai-model">AI модель</label>
+          <select id="ai-model" class="select">
+            <option value="anthropic/claude-sonnet-4">Claude Sonnet 4 (рекомендуется)</option>
+            <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+            <option value="openai/gpt-4o">GPT-4o</option>
+            <option value="google/gemini-pro-1.5">Gemini Pro 1.5</option>
+            <option value="qwen/qwen-2.5-72b-instruct">Qwen 2.5 72B (бюджетный)</option>
+          </select>
+        </div>
+
+        <div class="subsection">
+          <h3>Контакты для сопроводительных писем</h3>
+          <span class="help-text" style="margin-bottom: 12px; display: block;">
+            Эти контакты будут добавлены в конец каждого сопроводительного письма
+          </span>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="contact-telegram">Telegram</label>
+              <input type="text" id="contact-telegram" class="input" placeholder="@username">
+            </div>
+            <div class="form-group">
+              <label for="contact-email">Email</label>
+              <input type="email" id="contact-email" class="input" placeholder="email@example.com">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="salary-expectation">Зарплатные ожидания</label>
+            <input type="text" id="salary-expectation" class="input" placeholder="250 000 ₽ или от 200 000 ₽">
+            <span class="help-text">
+              Будет включено в сопроводительное, если вакансия требует указать зарплату
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- AggressiveFit Settings -->
+      <section class="section">
+        <h2 class="section-title collapsible" data-target="aggressivefit-content">
+          AggressiveFit настройки
+          <span class="collapse-icon">▼</span>
+        </h2>
+
+        <div id="aggressivefit-content" class="collapsible-content">
+          <p class="help-text" style="margin-bottom: 16px;">
+            Система автоматически оценивает соответствие вашего резюме вакансии и адаптирует уровень переписывания.
+            Чем ниже соответствие, тем агрессивнее переписывается резюме.
+          </p>
+
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="aggressivefit-enabled" checked>
+              <span>Включить оценку соответствия</span>
+            </label>
+            <span class="help-text">Если выключено, резюме будет переписываться с умеренным уровнем (50%)</span>
+          </div>
+
+          <div class="form-group">
+            <label for="min-fit-score">Минимальный Fit Score: <span id="min-fit-score-value">15%</span></label>
+            <input type="range" id="min-fit-score" class="range" min="0" max="50" value="15">
+            <span class="help-text">Если соответствие ниже этого порога, будет показано предупреждение</span>
+          </div>
+
+          <div class="form-group">
+            <label for="max-aggressiveness">Максимальный уровень переписывания: <span id="max-aggressiveness-value">95%</span></label>
+            <input type="range" id="max-aggressiveness" class="range" min="50" max="100" value="95">
+            <span class="help-text">Ограничивает максимальную агрессивность переписывания</span>
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="aggressiveness-override-enabled">
+              <span>Зафиксировать уровень переписывания вручную</span>
+            </label>
+          </div>
+
+          <div class="form-group" id="override-slider-group" style="display: none;">
+            <label for="aggressiveness-override">Фиксированный уровень: <span id="aggressiveness-override-value">50%</span></label>
+            <input type="range" id="aggressiveness-override" class="range" min="0" max="100" value="50">
+            <span class="help-text">
+              0-20%: Консервативный (лёгкая оптимизация)<br>
+              30-50%: Умеренный (активное переписывание)<br>
+              60-80%: Агрессивный (максимальная адаптация)<br>
+              90-100%: Максимальный (полное переосмысление)
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Resume Section -->
+      <section class="section">
+        <h2 class="section-title collapsible" data-target="resume-content">
+          Моё резюме
+          <span class="collapse-icon">▼</span>
+        </h2>
+
+        <div id="resume-content" class="collapsible-content">
+          <!-- PDF Import -->
+          <div class="import-section">
+            <label for="pdf-import" class="btn btn-import">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              Импорт из PDF
+            </label>
+            <input type="file" id="pdf-import" accept=".pdf" class="hidden">
+            <span id="import-status" class="import-status"></span>
+          </div>
+          <div class="form-group">
+            <label for="full-name">ФИО</label>
+            <input type="text" id="full-name" class="input" placeholder="Иван Иванов">
+          </div>
+
+          <div class="form-group">
+            <label for="title">Желаемая должность</label>
+            <input type="text" id="title" class="input" placeholder="Frontend Developer">
+          </div>
+
+          <div class="form-group">
+            <label for="summary">О себе</label>
+            <textarea id="summary" class="textarea" rows="4" placeholder="Краткое описание вашего опыта и навыков..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="skills">Навыки (через запятую)</label>
+            <input type="text" id="skills" class="input" placeholder="JavaScript, React, TypeScript, Node.js">
+          </div>
+
+          <!-- Experience Section -->
+          <div class="subsection">
+            <h3>Опыт работы</h3>
+            <div id="experience-list"></div>
+            <button type="button" id="add-experience" class="btn btn-secondary">
+              + Добавить опыт
+            </button>
+          </div>
+
+          <!-- Contacts -->
+          <div class="subsection">
+            <h3>Контакты</h3>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" class="input" placeholder="email@example.com">
+              </div>
+              <div class="form-group">
+                <label for="phone">Телефон</label>
+                <input type="tel" id="phone" class="input" placeholder="+7 999 123-45-67">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="telegram">Telegram</label>
+              <input type="text" id="telegram" class="input" placeholder="@username">
+            </div>
+            <div class="form-group">
+              <label for="linkedin">LinkedIn</label>
+              <input type="text" id="linkedin" class="input" placeholder="linkedin.com/in/username">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HH.ru Resume Management -->
+      <section class="section">
+        <h2 class="section-title collapsible" data-target="hh-resumes-content">
+          Резюме на HH.ru
+          <span class="collapse-icon">▼</span>
+        </h2>
+
+        <div id="hh-resumes-content" class="collapsible-content">
+          <p class="help-text" style="margin-bottom: 16px;">
+            Управление резюме на HH.ru. Вы должны быть авторизованы на hh.ru для работы с этим разделом.
+          </p>
+
+          <div class="hh-resumes-actions">
+            <button type="button" id="load-hh-resumes" class="btn btn-secondary">
+              Загрузить резюме
+            </button>
+            <button type="button" id="delete-all-resumes" class="btn btn-danger" style="display: none;">
+              Удалить все
+            </button>
+          </div>
+
+          <div id="hh-resumes-list" class="hh-resumes-list">
+            <p class="help-text">Нажмите "Загрузить резюме" для просмотра списка</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Cover Letter Template -->
+      <section class="section">
+        <h2 class="section-title collapsible" data-target="template-content">
+          Шаблон сопроводительного
+          <span class="collapse-icon">▼</span>
+        </h2>
+
+        <div id="template-content" class="collapsible-content">
+          <div class="form-group">
+            <label for="cover-template">Кастомный промпт (опционально)</label>
+            <textarea id="cover-template" class="textarea" rows="8" placeholder="Оставьте пустым для использования стандартного промпта. Доступные переменные: {{vacancy.name}}, {{vacancy.company}}, {{resume.experience}} и др."></textarea>
+            <span class="help-text">
+              Переменные: {{vacancy.name}}, {{vacancy.company}}, {{vacancy.description}},
+              {{vacancy.keySkills}}, {{resume.fullName}}, {{resume.title}}, {{resume.experience}}, {{resume.skills}}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Actions -->
+      <div class="actions">
+        <button type="button" id="save-btn" class="btn btn-primary">
+          Сохранить настройки
+        </button>
+        <button type="button" id="reset-btn" class="btn btn-secondary">
+          Сбросить
+        </button>
+      </div>
+
+      <!-- Status -->
+      <div id="status-message" class="status-message hidden"></div>
+    </main>
+  </div>
+
+  <!-- Experience Template (hidden) -->
+  <template id="experience-template">
+    <div class="experience-item">
+      <div class="experience-header">
+        <span class="experience-title">Опыт работы</span>
+        <button type="button" class="btn-remove" title="Удалить">×</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Компания</label>
+          <input type="text" class="input exp-company" placeholder="Название компании">
+        </div>
+        <div class="form-group">
+          <label>Должность</label>
+          <input type="text" class="input exp-position" placeholder="Ваша должность">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Начало</label>
+          <input type="month" class="input exp-start">
+        </div>
+        <div class="form-group">
+          <label>Окончание</label>
+          <input type="month" class="input exp-end" placeholder="Или оставьте пустым">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Описание</label>
+        <textarea class="textarea exp-description" rows="2" placeholder="Чем занимались"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Достижения (по одному на строку)</label>
+        <textarea class="textarea exp-achievements" rows="2" placeholder="Увеличил конверсию на 30%&#10;Оптимизировал время загрузки на 50%"></textarea>
+      </div>
+    </div>
+  </template>
+
+  <script src="options.js" type="module"></script>
+</body>
+</html>

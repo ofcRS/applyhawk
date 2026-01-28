@@ -1,0 +1,90 @@
+{
+  "manifest_version": 3,
+  "name": "ApplyHawk",
+  "description": "AI-powered job application automation with personalized resumes and cover letters",
+  "version": "1.0.0",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs",
+    "sidePanel",
+    "cookies"
+  ],
+  "host_permissions": [
+    "https://hh.ru/*",
+    "https://*.hh.ru/*",
+    "https://api.hh.ru/*",
+    "https://openrouter.ai/*",
+    "https://linkedin.com/*",
+    "https://*.linkedin.com/*",
+    "https://indeed.com/*",
+    "https://*.indeed.com/*",
+    "https://glassdoor.com/*",
+    "https://*.glassdoor.com/*",
+    "https://greenhouse.io/*",
+    "https://*.greenhouse.io/*",
+    "https://lever.co/*",
+    "https://*.lever.co/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://hh.ru/*", "https://*.hh.ru/*"],
+      "js": ["platforms/hh/content/injector.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://hh.ru/vacancy/*", "https://*.hh.ru/vacancy/*"],
+      "js": ["platforms/hh/content/vacancy-ui.js"],
+      "css": ["platforms/hh/styles/vacancy.css"]
+    },
+    {
+      "matches": [
+        "https://linkedin.com/jobs/*",
+        "https://*.linkedin.com/jobs/*",
+        "https://indeed.com/*",
+        "https://*.indeed.com/*",
+        "https://glassdoor.com/job-listing/*",
+        "https://*.glassdoor.com/job-listing/*",
+        "https://*.greenhouse.io/*",
+        "https://*.lever.co/*"
+      ],
+      "js": ["platforms/universal/content-script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "ui/panel/panel.html"
+  },
+  "options_page": "ui/options/options.html",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["core/utils/network-interceptor.js"],
+      "matches": ["https://hh.ru/*", "https://*.hh.ru/*"]
+    },
+    {
+      "resources": ["prompts/*.yaml"],
+      "matches": ["<all_urls>"]
+    },
+    {
+      "resources": ["fonts/*.ttf"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

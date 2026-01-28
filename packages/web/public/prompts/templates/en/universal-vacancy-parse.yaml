@@ -1,0 +1,34 @@
+name: universal_vacancy_parse
+description: Parse free-form job description into structured format
+temperature: 0.2
+max_tokens: 1500
+
+system: |
+  You are a job description parser. Extract structured data from raw job posting text.
+
+user: |
+  RAW JOB DESCRIPTION:
+  {{rawText}}
+
+  TASK:
+  Parse this job description into structured JSON format.
+
+  OUTPUT FORMAT (JSON only):
+  {
+    "name": "Job Title",
+    "company": "Company Name",
+    "description": "Full job description text (cleaned up)",
+    "keySkills": ["required skill 1", "required skill 2", "..."],
+    "experience": "Required experience level (e.g., '3-5 years', 'Senior', 'Entry level')",
+    "salary": "Salary range if mentioned, or null"
+  }
+
+  PARSING RULES:
+  - Extract the job title from the posting
+  - Identify the company name
+  - List ALL technical skills and technologies mentioned
+  - Include both required and preferred skills in keySkills
+  - Normalize experience requirements
+  - Extract salary information if present
+  - Clean up formatting in description
+  - Preserve the original language

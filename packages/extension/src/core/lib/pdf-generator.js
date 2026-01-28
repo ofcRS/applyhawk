@@ -5,7 +5,7 @@
  */
 
 import fontkit from "@pdf-lib/fontkit";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { PDFDocument, PDFName, PDFString, StandardFonts, rgb } from "pdf-lib";
 
 // A4 page dimensions in points (72 points = 1 inch)
 const PAGE_WIDTH = 595;
@@ -36,7 +36,7 @@ const LINE_HEIGHT = 1.4;
 const BULLET = "•";
 
 /**
- * Load Noto Sans fonts for Cyrillic support
+ * Load Noto Serif fonts for Cyrillic support (professional serif look)
  * @param {PDFDocument} pdfDoc - PDF document instance
  * @returns {Promise<{regular: PDFFont, bold: PDFFont}>}
  */
@@ -44,9 +44,9 @@ async function loadFonts(pdfDoc) {
   pdfDoc.registerFontkit(fontkit);
 
   try {
-    // Load custom fonts from extension's fonts folder
-    const regularUrl = chrome.runtime.getURL("fonts/NotoSans-Regular.ttf");
-    const boldUrl = chrome.runtime.getURL("fonts/NotoSans-Bold.ttf");
+    // Load custom fonts from extension's fonts folder (Serif for professional look with Cyrillic support)
+    const regularUrl = chrome.runtime.getURL("fonts/NotoSerif-Regular.ttf");
+    const boldUrl = chrome.runtime.getURL("fonts/NotoSerif-Bold.ttf");
 
     const [regularBytes, boldBytes] = await Promise.all([
       fetch(regularUrl).then((res) => res.arrayBuffer()),
@@ -59,12 +59,12 @@ async function loadFonts(pdfDoc) {
     return { regular, bold };
   } catch (error) {
     console.warn(
-      "[PDF Generator] Failed to load Noto Sans fonts, falling back to Helvetica:",
+      "[PDF Generator] Failed to load Noto Serif fonts, falling back to Times Roman:",
       error,
     );
-    // Fallback to standard fonts (no Cyrillic support)
-    const regular = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    // Fallback to Times Roman (serif, but no Cyrillic support)
+    const regular = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+    const bold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
     return { regular, bold };
   }
 }
@@ -148,6 +148,73 @@ function drawWrappedText(page, text, x, y, font, fontSize, maxWidth, color) {
 }
 
 /**
+ * Draw justified text (both edges aligned)
+ * Last line of each paragraph is left-aligned (standard justification)
+ * @returns {number} - New Y position after drawing
+ */
+function drawJustifiedText(page, text, x, y, font, fontSize, maxWidth, color) {
+  const lines = wrapText(text, font, fontSize, maxWidth);
+  let currentY = y;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const isLastLine = i === lines.length - 1;
+
+    if (isLastLine || line.trim().length === 0) {
+      // Last line: left-aligned
+      page.drawText(line, {
+        x,
+        y: currentY,
+        size: fontSize,
+        font,
+        color,
+      });
+    } else {
+      // Other lines: justified
+      const words = line.split(" ").filter((w) => w.length > 0);
+      if (words.length <= 1) {
+        page.drawText(line, {
+          x,
+          y: currentY,
+          size: fontSize,
+          font,
+          color,
+        });
+      } else {
+        // Calculate total width of words without spaces
+        let wordsWidth = 0;
+        for (const word of words) {
+          wordsWidth += font.widthOfTextAtSize(word, fontSize);
+        }
+
+        // Calculate space width to distribute
+        const totalSpaceWidth = maxWidth - wordsWidth;
+        const spaceWidth = totalSpaceWidth / (words.length - 1);
+
+        // Draw each word with calculated spacing
+        let xPos = x;
+        for (let j = 0; j < words.length; j++) {
+          page.drawText(words[j], {
+            x: xPos,
+            y: currentY,
+            size: fontSize,
+            font,
+            color,
+          });
+          xPos += font.widthOfTextAtSize(words[j], fontSize);
+          if (j < words.length - 1) {
+            xPos += spaceWidth;
+          }
+        }
+      }
+    }
+    currentY -= fontSize * LINE_HEIGHT;
+  }
+
+  return currentY;
+}
+
+/**
  * Draw a horizontal divider line (full width, black)
  */
 function drawDivider(page, y, thickness = 0.5) {
@@ -214,17 +281,21 @@ function formatDateShort(date) {
 
 /**
  * Parse description into bullet points
- * Splits by newlines, periods followed by capital letters, or existing bullet markers
+ * Splits by newlines first, then strips bullet markers from each line
+ * Deduplicates entries to avoid repetition
  * @param {string} description - Description text
  * @returns {string[]} - Array of bullet points
  */
 function parseBulletPoints(description) {
   if (!description) return [];
 
-  // First, split by explicit newlines or bullet markers
+  // Split by newlines first
   let points = description
-    .split(/[\n\r]+|(?:^|\s)[•\-\*]\s+/)
-    .map((s) => s.trim())
+    .split(/[\n\r]+/)
+    .map((line) => {
+      // Strip leading bullet markers (•, -, *) from each line
+      return line.replace(/^[\s]*[•\-\*][\s]+/, "").trim();
+    })
     .filter((s) => s.length > 0);
 
   // If we only got one long paragraph, try to split by sentences
@@ -236,11 +307,20 @@ function parseBulletPoints(description) {
       .filter((s) => s.length > 0);
   }
 
+  // Deduplicate entries (case-insensitive comparison)
+  const seen = new Set();
+  points = points.filter((point) => {
+    const normalized = point.toLowerCase();
+    if (seen.has(normalized)) return false;
+    seen.add(normalized);
+    return true;
+  });
+
   return points;
 }
 
 /**
- * Draw bullet points list
+ * Draw bullet points list with justified text
  * @returns {number} - New Y position after drawing
  */
 function drawBulletPoints(page, points, x, y, font, fontSize, maxWidth, color) {
@@ -257,21 +337,151 @@ function drawBulletPoints(page, points, x, y, font, fontSize, maxWidth, color) {
       color,
     });
 
-    // Draw text with wrapping, indented after bullet
+    // Draw text with wrapping and justification, indented after bullet
     const lines = wrapText(point, font, fontSize, maxWidth - bulletIndent);
     for (let i = 0; i < lines.length; i++) {
-      page.drawText(lines[i], {
-        x: x + bulletIndent,
-        y: currentY,
-        size: fontSize,
-        font,
-        color,
-      });
+      const line = lines[i];
+      const isLastLine = i === lines.length - 1;
+
+      if (isLastLine || line.trim().length === 0) {
+        // Last line: left-aligned
+        page.drawText(line, {
+          x: x + bulletIndent,
+          y: currentY,
+          size: fontSize,
+          font,
+          color,
+        });
+      } else {
+        // Other lines: justified
+        const words = line.split(" ").filter((w) => w.length > 0);
+        if (words.length <= 1) {
+          page.drawText(line, {
+            x: x + bulletIndent,
+            y: currentY,
+            size: fontSize,
+            font,
+            color,
+          });
+        } else {
+          let wordsWidth = 0;
+          for (const word of words) {
+            wordsWidth += font.widthOfTextAtSize(word, fontSize);
+          }
+          const totalSpaceWidth = maxWidth - bulletIndent - wordsWidth;
+          const spaceWidth = totalSpaceWidth / (words.length - 1);
+
+          let xPos = x + bulletIndent;
+          for (let j = 0; j < words.length; j++) {
+            page.drawText(words[j], {
+              x: xPos,
+              y: currentY,
+              size: fontSize,
+              font,
+              color,
+            });
+            xPos += font.widthOfTextAtSize(words[j], fontSize);
+            if (j < words.length - 1) {
+              xPos += spaceWidth;
+            }
+          }
+        }
+      }
       currentY -= fontSize * LINE_HEIGHT;
     }
   }
 
   return currentY;
+}
+
+/**
+ * Get URL for a contact type
+ * @param {string} type - Contact type (email, phone, linkedin, telegram)
+ * @param {string} value - Contact value
+ * @returns {string} - URL for the contact
+ */
+function getContactUrl(type, value) {
+  switch (type) {
+    case "email":
+      return `mailto:${value}`;
+    case "phone":
+      // Clean phone number for tel: URL
+      const cleanPhone = value.replace(/[^\d+]/g, "");
+      return `tel:${cleanPhone}`;
+    case "linkedin":
+      // Handle both full URLs and just usernames
+      if (value.startsWith("http")) return value;
+      return `https://linkedin.com/in/${value.replace(/^@/, "")}`;
+    case "telegram":
+      // Handle both full URLs and just usernames
+      if (value.startsWith("http")) return value;
+      return `https://t.me/${value.replace(/^@/, "")}`;
+    default:
+      return value;
+  }
+}
+
+/**
+ * Draw text with a clickable link annotation
+ * @param {PDFPage} page - PDF page to draw on
+ * @param {PDFDocument} pdfDoc - PDF document instance
+ * @param {string} text - Text to display
+ * @param {number} x - X coordinate
+ * @param {number} y - Y coordinate
+ * @param {PDFFont} font - Font to use
+ * @param {number} fontSize - Font size
+ * @param {Object} color - Text color
+ * @param {string} url - URL to link to
+ */
+function drawTextWithLink(
+  page,
+  pdfDoc,
+  text,
+  x,
+  y,
+  font,
+  fontSize,
+  color,
+  url,
+) {
+  // Draw the text
+  page.drawText(text, {
+    x,
+    y,
+    size: fontSize,
+    font,
+    color,
+  });
+
+  // Calculate text dimensions for the link annotation
+  const textWidth = font.widthOfTextAtSize(text, fontSize);
+  const textHeight = fontSize;
+
+  // Create link annotation
+  const linkAnnotation = pdfDoc.context.obj({
+    Type: PDFName.of("Annot"),
+    Subtype: PDFName.of("Link"),
+    Rect: [x, y - 2, x + textWidth, y + textHeight],
+    Border: [0, 0, 0], // No visible border
+    A: {
+      Type: PDFName.of("Action"),
+      S: PDFName.of("URI"),
+      URI: PDFString.of(url),
+    },
+  });
+
+  // Get or create the Annots array on the page
+  const annots = page.node.get(PDFName.of("Annots"));
+  if (annots) {
+    annots.push(pdfDoc.context.register(linkAnnotation));
+  } else {
+    page.node.set(
+      PDFName.of("Annots"),
+      pdfDoc.context.obj([pdfDoc.context.register(linkAnnotation)]),
+    );
+  }
+
+  return textWidth;
 }
 
 /**
@@ -282,45 +492,110 @@ function drawBulletPoints(page, points, x, y, font, fontSize, maxWidth, color) {
  * @returns {Promise<Uint8Array>} - PDF file as byte array
  */
 export async function generatePdfResume(personalizedResume, baseResume) {
+  console.log("[DEBUG:PDF] generatePdfResume called with:", {
+    hasPersonalizedResume: !!personalizedResume,
+    personalizedExperienceCount: personalizedResume?.experience?.length,
+    personalizedKeySkillsCount: personalizedResume?.keySkills?.length,
+    hasBaseResume: !!baseResume,
+    baseExperienceCount: baseResume?.experience?.length,
+    baseSkillsCount: baseResume?.skills?.length,
+  });
+
   const pdfDoc = await PDFDocument.create();
   const fonts = await loadFonts(pdfDoc);
 
   let page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   let y = PAGE_HEIGHT - MARGIN;
 
-  // ========== HEADER: Centered Name ==========
-  const fullName = baseResume.fullName || "Name Not Specified";
+  // ========== HEADER: Centered Name (ALL CAPS) ==========
+  const fullName = (baseResume.fullName || "Name Not Specified").toUpperCase();
   drawCenteredText(page, fullName, y, fonts.bold, SIZES.name, COLORS.text);
   y -= SIZES.name + 10;
 
-  // ========== CONTACTS: Centered line ==========
-  const contacts = [];
-  if (baseResume.contacts?.email) contacts.push(baseResume.contacts.email);
-  if (baseResume.contacts?.phone) contacts.push(baseResume.contacts.phone);
-  if (baseResume.contacts?.linkedin)
-    contacts.push(baseResume.contacts.linkedin);
-  if (baseResume.contacts?.telegram)
-    contacts.push(baseResume.contacts.telegram);
+  // ========== CONTACTS: Centered line with clickable links ==========
+  const contactItems = [];
+  if (baseResume.contacts?.email) {
+    contactItems.push({ type: "email", value: baseResume.contacts.email });
+  }
+  if (baseResume.contacts?.phone) {
+    contactItems.push({ type: "phone", value: baseResume.contacts.phone });
+  }
+  if (baseResume.contacts?.linkedin) {
+    contactItems.push({
+      type: "linkedin",
+      value: baseResume.contacts.linkedin,
+    });
+  }
+  if (baseResume.contacts?.telegram) {
+    contactItems.push({
+      type: "telegram",
+      value: baseResume.contacts.telegram,
+    });
+  }
 
-  if (contacts.length > 0) {
-    const contactLine = contacts.join("  |  ");
-    drawCenteredText(
-      page,
-      contactLine,
-      y,
-      fonts.regular,
+  if (contactItems.length > 0) {
+    const separator = "  |  ";
+    const separatorWidth = fonts.regular.widthOfTextAtSize(
+      separator,
       SIZES.small,
-      COLORS.secondary,
     );
+
+    // Calculate total width for centering
+    let totalWidth = 0;
+    for (let i = 0; i < contactItems.length; i++) {
+      totalWidth += fonts.regular.widthOfTextAtSize(
+        contactItems[i].value,
+        SIZES.small,
+      );
+      if (i < contactItems.length - 1) {
+        totalWidth += separatorWidth;
+      }
+    }
+
+    // Start drawing from centered position
+    let xPos = (PAGE_WIDTH - totalWidth) / 2;
+
+    for (let i = 0; i < contactItems.length; i++) {
+      const item = contactItems[i];
+      const url = getContactUrl(item.type, item.value);
+
+      // Draw contact with link
+      const textWidth = drawTextWithLink(
+        page,
+        pdfDoc,
+        item.value,
+        xPos,
+        y,
+        fonts.regular,
+        SIZES.small,
+        COLORS.secondary,
+        url,
+      );
+      xPos += textWidth;
+
+      // Draw separator if not last item
+      if (i < contactItems.length - 1) {
+        page.drawText(separator, {
+          x: xPos,
+          y,
+          size: SIZES.small,
+          font: fonts.regular,
+          color: COLORS.secondary,
+        });
+        xPos += separatorWidth;
+      }
+    }
+
     y -= SIZES.small + 25;
   }
 
   // ========== PROFILE (Summary) ==========
-  if (baseResume.summary) {
+  const summary = personalizedResume?.summary || baseResume.summary;
+  if (summary) {
     y = drawSectionHeader(page, "Profile", y, fonts);
-    y = drawWrappedText(
+    y = drawJustifiedText(
       page,
-      baseResume.summary,
+      summary,
       MARGIN,
       y,
       fonts.regular,
@@ -332,7 +607,12 @@ export async function generatePdfResume(personalizedResume, baseResume) {
   }
 
   // ========== KEY SKILLS ==========
-  const skills = personalizedResume.keySkills || baseResume.skills || [];
+  const skills = personalizedResume?.keySkills || baseResume.skills || [];
+  console.log("[DEBUG:PDF] Using skills:", {
+    source: personalizedResume?.keySkills?.length ? "personalized" : "base",
+    count: skills.length,
+    skills: skills.slice(0, 5),
+  });
   if (skills.length > 0) {
     y = drawSectionHeader(page, "Key Skills", y, fonts);
 
@@ -353,7 +633,19 @@ export async function generatePdfResume(personalizedResume, baseResume) {
 
   // ========== CAREER HISTORY (Experience) ==========
   const experience =
-    personalizedResume.experience || baseResume.experience || [];
+    personalizedResume?.experience || baseResume.experience || [];
+  console.log("[DEBUG:PDF] Using experience:", {
+    source: personalizedResume?.experience?.length ? "personalized" : "base",
+    count: experience.length,
+  });
+  if (experience.length > 0 && experience[0]) {
+    console.log("[DEBUG:PDF] First experience entry:", {
+      position: experience[0].position,
+      company: experience[0].companyName || experience[0].company,
+      descriptionLength: experience[0].description?.length,
+      descriptionPreview: experience[0].description?.substring(0, 200),
+    });
+  }
   if (experience.length > 0) {
     y = drawSectionHeader(page, "Career History", y, fonts);
 

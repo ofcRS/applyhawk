@@ -1,0 +1,49 @@
+name: universal_vacancy_parser
+description: Parse free-form job description text into structured vacancy format
+temperature: 0.2
+max_tokens: 2000
+
+user: |
+  Parse the following job description into a structured format.
+  Extract key information even if the text is informal or incomplete.
+
+  JOB DESCRIPTION:
+  {{rawText}}
+
+  OUTPUT FORMAT (JSON only, no explanation):
+  ```json
+  {
+    "name": "Job title / position name",
+    "company": "Company name (or 'Not specified' if not found)",
+    "description": "Full job description text (cleaned up, without duplicates)",
+    "keySkills": ["skill1", "skill2", "skill3"],
+    "experience": "Required experience level (e.g., '3+ years', 'Junior', 'Senior')",
+    "salary": "Salary information if mentioned, otherwise null"
+  }
+  ```
+
+  EXTRACTION RULES:
+  1. **name**: Extract the job title. If multiple titles mentioned, pick the most specific one.
+  2. **company**: Look for company name near "at", "for", "company:", or in headers. Use "Not specified" if not found.
+  3. **description**: Clean up the text - remove duplicate content, fix formatting, keep the essential job description.
+  4. **keySkills**: Extract ALL mentioned technologies, tools, frameworks, languages, methodologies, and soft skills.
+     - Include programming languages (Python, JavaScript, Go, etc.)
+     - Include frameworks (React, Django, Spring, etc.)
+     - Include tools (Docker, Kubernetes, Git, etc.)
+     - Include methodologies (Agile, Scrum, TDD, etc.)
+     - Include soft skills only if explicitly required (leadership, communication, etc.)
+     - Normalize names (e.g., "JS" -> "JavaScript", "k8s" -> "Kubernetes")
+     - Limit to 15 most relevant skills
+  5. **experience**: Look for years of experience, seniority level, or career stage requirements.
+  6. **salary**: Extract salary range/amount if mentioned. Return null if not specified.
+
+  IMPORTANT:
+  - Return ONLY valid JSON, no additional text or explanation
+  - If a field cannot be determined, use reasonable defaults ("Not specified", empty array, null)
+  - The input may be in Russian or English - detect and process accordingly
+  - Keep the original language of the job description in the output
+
+  Parse the job description now:
+
+# Template variables:
+# {{rawText}} - Raw job description text pasted by user

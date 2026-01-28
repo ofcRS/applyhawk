@@ -1,0 +1,75 @@
+name: fit_assessment
+description: Assess how well a candidate matches a job vacancy
+temperature: 0.3
+max_tokens: 1000
+
+system: |
+  You assess how well a candidate matches a job vacancy.
+
+user: |
+  INPUT:
+  Vacancy: {{vacancy.name}} at {{vacancy.company}}
+  Required Skills: {{vacancy.keySkills}}
+  Required Experience: {{vacancy.experience}}
+  Job Description: {{vacancy.description}}
+
+  Candidate:
+  Title: {{resume.title}}
+  Skills: {{resume.skills}}
+  Experience: {{resume.experience}}
+
+  TASK:
+  Analyze match quality across dimensions.
+
+  SCORING CRITERIA:
+
+  skillMatch (0.0-1.0):
+  - 1.0: All required skills present with proven experience
+  - 0.7: Most required skills, missing 1-2 minor ones
+  - 0.5: Half of required skills present
+  - 0.3: Few skills match, but related technologies exist
+  - 0.0: No relevant skills
+
+  experienceMatch (0.0-1.0):
+  - 1.0: Same role, same industry, same scale
+  - 0.7: Same role, different industry OR same industry, slightly different role
+  - 0.5: Related role with transferable experience
+  - 0.3: Different role but some relevant exposure
+  - 0.0: Completely unrelated experience
+
+  seniorityMatch (0.0-1.0):
+  - 1.0: Exact seniority level match
+  - 0.7: One level difference (Senior applying for Middle, or vice versa)
+  - 0.4: Two levels difference
+  - 0.0: Vast seniority gap
+
+  stackOverlap (0.0-1.0):
+  - Count: (matching technologies) / (required technologies)
+  - Partial credit for similar tech (Vue→React = 0.5, Python→JavaScript = 0.3)
+
+  OUTPUT FORMAT (JSON only):
+  ```json
+  {
+    "skillMatch": 0.0-1.0,
+    "experienceMatch": 0.0-1.0,
+    "seniorityMatch": 0.0-1.0,
+    "stackOverlap": 0.0-1.0,
+    "fitScore": 0.0-1.0,
+    "gaps": ["skill or experience gaps that will need addressing"],
+    "strengths": ["strongest matching points to emphasize"]
+  }
+  ```
+
+  Note: fitScore is weighted average: skills 0.35, experience 0.30, seniority 0.20, stack 0.15
+
+  Analyze now:
+
+# Template variables:
+# {{vacancy.name}} - Job title
+# {{vacancy.company}} - Company name
+# {{vacancy.keySkills}} - Required skills (comma-separated)
+# {{vacancy.experience}} - Required experience level
+# {{vacancy.description}} - Job description (HTML stripped, max 2000 chars)
+# {{resume.title}} - Candidate's job title
+# {{resume.skills}} - Skills (comma-separated)
+# {{resume.experience}} - Formatted experience

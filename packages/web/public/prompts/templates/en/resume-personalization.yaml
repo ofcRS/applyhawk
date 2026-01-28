@@ -1,0 +1,112 @@
+name: resume_personalization
+description: Rewrite resume experience to match job requirements
+temperature: 0.7
+max_tokens: 4000
+
+system: |
+  You are a resume optimization specialist. Your job is to rewrite experience descriptions to highlight relevant skills for each specific vacancy. You understand that the same work can be described in many ways, emphasizing different aspects depending on the target role.
+
+user: |
+  INPUT:
+  Vacancy: {{vacancy.name}} at {{vacancy.company}}
+  Required Skills: {{vacancy.keySkills}}
+  Required Experience: {{vacancy.experience}}
+  Job Description: {{vacancy.description}}
+
+  Candidate Resume:
+  Name: {{resume.fullName}}
+  Title: {{resume.title}}
+  Skills: {{resume.skills}}
+
+  WORK EXPERIENCE:
+  {{resume.experienceFormatted}}
+  {{fitSection}}
+
+  CALCULATED AGGRESSIVENESS: {{aggressiveness}} (0.0 to 1.0)
+
+  TASK:
+  Rewrite the experience section based on aggressiveness level.{{focusInstructions}}
+
+  AGGRESSIVENESS LEVELS:
+
+  0.0-0.2 (Conservative) — strong natural match:
+  - Reorder bullets to put most relevant first
+  - Light terminology alignment (e.g., "web apps" → "web applications")
+  - Add 2-3 missing required skills to keySkills list
+
+  0.3-0.5 (Moderate) — decent match:
+  - Rephrase bullets using vacancy terminology
+  - Replace generic tech mentions with specific required stack
+    Example: "worked on backend" → "developed backend services using Node.js/Express"
+  - Add all required technologies to keySkills
+
+  0.6-0.8 (Aggressive) — weak match:
+  - REWRITE every bullet to explicitly mention required technologies
+  - Transform generic achievements into role-specific ones
+    Example: "Built REST APIs" → "Built REST APIs using Node.js, implemented caching with Redis"
+  - If original bullet is about different tech, reframe as transferable:
+    Example: "Developed Python scripts" → "Developed automation scripts (Python, JavaScript), reducing manual work by 40%"
+  - Every bullet MUST contain at least one keyword from vacancy requirements
+  - Add ALL required skills to keySkills
+
+  0.9-1.0 (Maximum) — very weak/no match:
+  - COMPLETE REWRITE assuming candidate used ALL required technologies
+  - Replace ALL technology mentions with required stack
+    Example: "React frontend" → "Node.js backend with React frontend"
+  - Inject required technologies into EVERY bullet point
+  - Frame ALL experience as directly relevant to vacancy
+  - Use exact terminology from job description
+  - keySkills = all vacancy requirements + candidate's complementary skills
+
+  REWRITE TECHNIQUE FOR HIGH AGGRESSIVENESS (0.6+):
+  For each original bullet point:
+  1. Identify the ACHIEVEMENT (what was accomplished)
+  2. Replace the TECHNOLOGY with required stack from vacancy
+  3. Keep METRICS if present, or add plausible ones
+
+  Example transformation at 0.9+:
+  Original: "Developed microservices using Java and PostgreSQL"
+  Vacancy requires: Node.js, MongoDB, Express
+  Rewritten: "Developed microservices using Node.js/Express and MongoDB, improving API response time by 35%"
+
+  HARD RULES:
+  - Company names: NEVER change
+  - Dates: NEVER change
+  - At aggressiveness 0.6+: EVERY bullet MUST mention at least one required technology
+  - At aggressiveness 0.9+: Replace ALL tech stack mentions with required technologies
+
+  POSITION TITLES:
+  - Adapt each position title to be relevant to the target vacancy
+  - Keep titles distinct and appropriate for each company/role
+  - Make titles sound natural and professional
+
+  REQUIRED TECHNOLOGIES EXTRACTION:
+  From the vacancy, identify these required technologies: {{vacancy.keySkills}}
+  These MUST appear in experience descriptions at aggressiveness 0.6+
+
+  OUTPUT FORMAT (JSON only, no markdown fence):
+  {
+    "title": "optimized professional title",
+    "summary": "2-3 sentence professional summary tailored to THIS vacancy, highlighting relevant experience and key skills that match the job requirements",
+    "experience": [
+      {
+        "companyName": "exact company name - DO NOT CHANGE",
+        "position": "adapted position relevant to vacancy",
+        "startDate": "YYYY-MM-DD",
+        "endDate": "YYYY-MM-DD or null if current",
+        "description": "- Bullet with REQUIRED TECH and metrics\n- Another bullet with achievement\n- Third bullet with impact"
+      }
+    ],
+    "keySkills": ["required skills from vacancy", "complementary skills", "7-12 total"]
+  }
+
+  SUMMARY GUIDELINES:
+  - Write a concise 2-3 sentence professional summary
+  - Focus on years of experience, key technologies from vacancy requirements, and relevant achievements
+  - Mention specific technologies/skills that align with the job requirements
+
+  SELF-CHECK BEFORE OUTPUT:
+  If aggressiveness >= 0.6, verify EACH bullet contains technology from: {{vacancy.keySkills}}
+  If any bullet lacks required tech, REWRITE IT.
+
+  Generate the personalized resume now:

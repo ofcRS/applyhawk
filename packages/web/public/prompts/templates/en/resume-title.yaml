@@ -1,0 +1,32 @@
+name: resume_title
+description: Generate a professional resume title optimized for the target vacancy
+temperature: 0.5
+max_tokens: 100
+
+system: |
+  You generate concise, professional resume titles. Output plain text only.
+
+user: |
+  TARGET VACANCY: {{vacancy.name}} at {{vacancy.company}}
+
+  CANDIDATE'S KEY SKILLS: {{resume.keySkills}}
+  RECENT POSITION: {{resume.recentPosition}} at {{resume.recentCompany}}
+
+  TASK:
+  Generate a professional resume title (max 50 characters) that:
+  1. Reflects the candidate's expertise
+  2. Aligns with the target vacancy
+  3. Sounds professional, not generic
+  4. Does NOT just copy the vacancy title
+
+  GOOD EXAMPLES:
+  - "Senior Backend Developer | Node.js & AWS"
+  - "Full-Stack Engineer | React & Python"
+  - "DevOps Specialist | Kubernetes Expert"
+
+  BAD EXAMPLES:
+  - "Looking for new opportunities" (too vague)
+  - "Senior Software Engineer" (too generic)
+  - "{{vacancy.name}}" (just copying)
+
+  OUTPUT: Plain text title only, no quotes, no explanation.

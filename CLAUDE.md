@@ -1,88 +1,124 @@
-# ApplyHawk - Chrome Extension
+# ApplyHawk - AI Job Application Platform
 
-AI-powered Chrome extension for automating job applications with personalized resumes and cover letters.
+AI-powered job application automation with personalized resumes and cover letters.
+
+## Architecture
+
+**Monorepo Structure:**
+```
+applyhawk/
+├── packages/
+│   ├── core/              # @applyhawk/core - Shared TypeScript logic
+│   │   ├── src/ai/        # OpenRouter AI client
+│   │   ├── src/pdf/       # PDF resume generator
+│   │   ├── src/storage/   # Storage adapters (web/extension)
+│   │   ├── src/prompts/   # Prompt loader + i18n
+│   │   └── src/types/     # Shared TypeScript types
+│   │
+│   ├── web/               # @applyhawk/web - React website (applyhawk.top)
+│   │   ├── src/pages/     # Landing, AppPage
+│   │   ├── src/components/# ResumeEditor, JobInput, ResultViewer
+│   │   ├── src/hooks/     # useAI, useStorage
+│   │   └── public/prompts/# YAML prompt templates
+│   │
+│   └── extension/         # @applyhawk/extension - Chrome extension
+│       ├── src/platforms/hh/       # HH.ru optimized integration
+│       ├── src/platforms/universal/# Universal job page detection
+│       └── src/ui/                 # Side panel, options page
+```
 
 ## Tech Stack
-- **Build:** esbuild + bun
+- **Build:** esbuild (extension), Vite (web)
+- **Monorepo:** bun workspaces
 - **Linting:** Biome
-- **Language:** Vanilla JavaScript (ES Modules)
-- **AI:** OpenRouter API (Claude, GPT-4o, Gemini, etc.)
-- **PDF:** pdfjs-dist (text extraction), custom PDF generator (output)
+- **Language:** TypeScript (core, web), JavaScript (extension)
+- **Web Framework:** React + Vite
+- **AI:** OpenRouter API
+- **PDF:** pdf-lib + fontkit
 
 ## Commands
 ```bash
-bun install          # Install dependencies
-bun run build        # Build extension to dist/
-bun run watch        # Build in watch mode
-bun run lint         # Lint and fix with Biome
-bun run format       # Format with Biome
+# Install all dependencies
+bun install
+
+# Build everything
+bun run build
+
+# Build individual packages
+bun run build:core       # Typecheck core package
+bun run build:extension  # Build Chrome extension to packages/extension/dist/
+bun run build:web        # Build website to packages/web/dist/
+
+# Development
+bun run dev:web          # Run web dev server
+bun run watch:extension  # Watch mode for extension
+
+# Lint & format
+bun run lint
+bun run format
 ```
 
-## Loading in Chrome
-1. `bun run build`
+## Loading Extension in Chrome
+1. `bun run build:extension`
 2. Open `chrome://extensions`
 3. Enable "Developer mode"
-4. "Load unpacked" → select `dist/` folder
+4. "Load unpacked" → select `packages/extension/dist/`
 
-## Configuration
-1. **OpenRouter API key** - https://openrouter.ai/keys (Side Panel → Platforms tab)
-2. **AI Model** - Side Panel → Platforms tab (Top/All/Budget categories)
-3. **Base resume** - Options page (manual entry or PDF import)
-4. **Platform login** - Must be logged into HH.ru
+## Key Features
 
-## Project Structure
-```
-src/
-├── background.js                 # Service worker entry point
-├── core/                         # Shared modules
-│   ├── ai/openrouter.js          # OpenRouter API client
-│   ├── background/message-router.js  # Chrome message handling
-│   ├── lib/
-│   │   ├── pdf-generator.js      # PDF resume generation
-│   │   ├── prompt-loader.js      # YAML prompt loading
-│   │   └── storage.js            # Chrome storage wrapper
-│   └── utils/network-interceptor.js  # Research mode API capture
-├── platforms/
-│   └── hh/                       # HH.ru platform
-│       ├── api/hh-internal-api.js    # HH.ru internal API client
-│       ├── content/
-│       │   ├── injector.js       # Network interceptor injection
-│       │   ├── vacancy-parser.js # Parse vacancy from DOM
-│       │   └── vacancy-ui.js     # AI Apply button & modal
-│       ├── handlers/hh-handlers.js   # Message handlers
-│       └── styles/vacancy.css    # Content script styles
-├── ui/
-│   ├── panel/                    # Side panel (AI settings, research mode)
-│   ├── options/                  # Settings page (resume editor)
-│   └── shared/                   # Design tokens, components
-├── prompts/                      # YAML prompt templates
-│   ├── resume-personalization.yaml
-│   ├── cover-letter.yaml
-│   ├── fit-assessment.yaml
-│   ├── pdf-parser.yaml
-│   ├── resume-title.yaml
-│   └── universal-vacancy-parse.yaml
-└── fonts/                        # Noto Sans/Serif for PDF
-```
+### Core Package (@applyhawk/core)
+- **AI Client:** Injectable OpenRouter client, works with web localStorage or Chrome storage
+- **Storage Adapters:** `createWebStorage()` for web, `createExtensionStorage()` for extension
+- **PDF Generator:** Configurable font URLs, Cyrillic support
+- **Prompt Loader:** Multi-language (en/ru) with auto-detection
+- **Types:** Shared TypeScript interfaces for Resume, Vacancy, Settings
 
-Note: `src/background-scripts/`, `src/content-scripts/`, `src/lib/`, `src/options/`, `src/panel/` are legacy duplicates - the active code is in `src/core/` and `src/platforms/`.
+### Web App (@applyhawk/web)
+- Landing page with value props
+- Resume editor with dynamic experience/education sections
+- Job description input with language detection
+- PDF download of personalized resume
+- Privacy-first: all data in localStorage
 
-## Supported Platforms
-- **HH.ru** - Full support
-- **LinkedIn** - Planned
-- **Indeed** - Planned
+### Extension (@applyhawk/extension)
+- **HH.ru:** Full integration with direct API updates
+- **Universal:** Job page detection on LinkedIn, Indeed, Glassdoor, Greenhouse, Lever
+- Side panel for settings and research mode
+- Options page for base resume configuration
 
 ## User Flow
+
+**Web:**
 ```
-Base resume (Options) → Open vacancy on HH.ru → Click "AI Отклик" button
-    → AI personalizes resume → Updates resume on HH.ru
-    → AI generates cover letter → Submits application
+Landing → Enter resume → Paste job → AI generates → Download PDF
 ```
 
-## Message Types
+**Extension:**
+```
+Open job page → Click "ApplyHawk" button → Side panel opens → AI generates → Apply
+```
+
+## Supported Platforms
+
+| Platform | Status | Integration |
+|----------|--------|-------------|
+| HH.ru | Full | Direct API, auto-apply |
+| LinkedIn | Detection | Button injection, manual apply |
+| Indeed | Detection | Button injection, manual apply |
+| Glassdoor | Detection | Button injection, manual apply |
+| Greenhouse | Detection | Button injection, manual apply |
+| Lever | Detection | Button injection, manual apply |
+
+## Configuration Required
+1. **OpenRouter API key** - Get at https://openrouter.ai/keys
+2. **Base resume** - Fill in Options page (extension) or web app
+3. **Platform login** - Must be logged into job sites for API features (HH.ru)
+
+## Message Types (Extension)
 
 | Message | Description |
 |---------|-------------|
+| `UNIVERSAL_JOB_DETECTED` | Job page detected on any supported site |
 | `CHECK_HH_AUTH` | Check HH.ru login status |
 | `GET_USER_RESUMES` | Fetch user's resumes |
 | `UPDATE_RESUME_EXPERIENCE` | Update resume experience |
@@ -91,22 +127,16 @@ Base resume (Options) → Open vacancy on HH.ru → Click "AI Отклик" butt
 | `GENERATE_PERSONALIZED_RESUME` | AI resume rewrite |
 | `GENERATE_COVER_LETTER` | AI cover letter |
 | `PARSE_RESUME_PDF` | Parse PDF to structured data |
+| `OPEN_SIDE_PANEL` | Open extension side panel |
 
-## Key Features
+## Prompt Templates
 
-### AI Resume Personalization
-- Rewrites experience descriptions to match job requirements
-- Reorders/filters skills by relevance
-- Generates professional resume title
+Located in `packages/core/src/prompts/templates/{en,ru}/`:
+- `resume-personalization.yaml` - Rewrites experience for job match
+- `cover-letter.yaml` - Generates professional cover letters
+- `fit-assessment.yaml` - Calculates fit score
+- `pdf-parser.yaml` - Parses PDF resume text
+- `universal-vacancy-parse.yaml` - Parses job descriptions
+- `resume-title.yaml` - Generates resume titles
 
-### Cover Letter Generation
-- Analyzes vacancy + resume
-- Avoids clichés, uses specific achievements
-- Russian language output for HH.ru
-
-### PDF Import (Options)
-- Upload PDF → pdfjs extracts text → AI parses into fields
-
-### Research Mode (Side Panel)
-- Captures all API requests for debugging
-- Export as JSON
+Language is auto-detected from job description (Cyrillic ratio check).

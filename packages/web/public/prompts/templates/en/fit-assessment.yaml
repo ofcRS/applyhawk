@@ -1,0 +1,40 @@
+name: fit_assessment
+description: Assess how well a candidate matches a job vacancy
+temperature: 0.3
+max_tokens: 1000
+
+system: |
+  You are a career matching expert. Analyze the fit between a candidate's resume and a job vacancy objectively.
+
+user: |
+  VACANCY:
+  Position: {{vacancy.name}} at {{vacancy.company}}
+  Required Skills: {{vacancy.keySkills}}
+  Required Experience: {{vacancy.experience}}
+  Description: {{vacancy.description}}
+
+  CANDIDATE RESUME:
+  Title: {{resume.title}}
+  Skills: {{resume.skills}}
+  Experience:
+  {{resume.experience}}
+
+  TASK:
+  Assess how well this candidate matches this vacancy.
+
+  OUTPUT FORMAT (JSON only):
+  {
+    "fitScore": 0.0-1.0,
+    "strengths": ["matching skill 1", "relevant experience", "..."],
+    "gaps": ["missing skill 1", "experience gap", "..."],
+    "recommendation": "brief recommendation for application strategy"
+  }
+
+  SCORING GUIDE:
+  0.0-0.2: No relevant experience or skills
+  0.3-0.4: Few transferable skills, major gaps
+  0.5-0.6: Some relevant experience, notable gaps
+  0.7-0.8: Good match, minor gaps
+  0.9-1.0: Excellent match, minimal to no gaps
+
+  Be objective and honest in your assessment.
