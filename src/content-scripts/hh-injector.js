@@ -18,7 +18,7 @@
       researchModeEnabled = result.researchMode === true;
       return researchModeEnabled;
     } catch (e) {
-      console.error("[HH AutoApply] Failed to check research mode:", e);
+      console.error("[ApplyHawk] Failed to check research mode:", e);
       return false;
     }
   }
@@ -26,7 +26,7 @@
   // Inject the interceptor script into page's main world
   function injectInterceptor() {
     if (document.querySelector("script[data-hh-interceptor]")) {
-      console.log("[HH AutoApply] Interceptor already injected");
+      console.log("[ApplyHawk] Interceptor already injected");
       return;
     }
 
@@ -36,10 +36,10 @@
     );
     script.dataset.hhInterceptor = "true";
     script.onload = () => {
-      console.log("[HH AutoApply] Interceptor script loaded");
+      console.log("[ApplyHawk] Interceptor script loaded");
     };
     script.onerror = (e) => {
-      console.error("[HH AutoApply] Failed to load interceptor:", e);
+      console.error("[ApplyHawk] Failed to load interceptor:", e);
     };
 
     (document.head || document.documentElement).appendChild(script);
@@ -54,7 +54,7 @@
 
       if (event.data.type === "HH_INTERCEPTOR_READY") {
         interceptorReady = true;
-        console.log("[HH AutoApply] Interceptor is ready");
+        console.log("[ApplyHawk] Interceptor is ready");
         return;
       }
 
@@ -73,7 +73,7 @@
           });
         } catch (e) {
           // Background script might not be ready yet
-          console.warn("[HH AutoApply] Failed to send capture:", e);
+          console.warn("[ApplyHawk] Failed to send capture:", e);
         }
       }
     });
@@ -85,7 +85,7 @@
       if (namespace === "local" && changes.researchMode) {
         researchModeEnabled = changes.researchMode.newValue === true;
         console.log(
-          "[HH AutoApply] Research mode:",
+          "[ApplyHawk] Research mode:",
           researchModeEnabled ? "ON" : "OFF",
         );
 
@@ -115,7 +115,7 @@
     }
 
     console.log(
-      "[HH AutoApply] Injector initialized, research mode:",
+      "[ApplyHawk] Injector initialized, research mode:",
       researchModeEnabled,
     );
   }

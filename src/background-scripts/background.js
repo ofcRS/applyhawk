@@ -3,7 +3,7 @@
  * Handles API calls and message routing
  */
 
-import { generatePdfResume } from "../lib/pdf-generator.js";
+import { generatePdfResume } from "../core/lib/pdf-generator.js";
 import { getBaseResume, getSettings } from "../lib/storage.js";
 import {
   applyToVacancy,

@@ -1,5 +1,5 @@
 /**
- * JobGenius Background Service Worker
+ * ApplyHawk Background Service Worker
  * Entry point that initializes the message router and platform handlers
  */
 
@@ -16,4 +16,4 @@ registerHHHandlers();
 // registerLinkedInHandlers();
 // registerIndeedHandlers();
 
-console.log("JobGenius background service worker started");
+console.log("ApplyHawk background service worker started");

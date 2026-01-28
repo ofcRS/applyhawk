@@ -55,7 +55,7 @@ function injectApplyButton() {
       ?.parentElement || document.querySelector(".vacancy-actions");
 
   if (!responseActions) {
-    console.log("JobGenius: Could not find response button container");
+    console.log("ApplyHawk: Could not find response button container");
     return;
   }
 
@@ -761,7 +761,7 @@ async function submitApplication() {
         ? titleResponse.title
         : generatedResume.experience?.[0]?.position || "Специалист";
 
-    console.log("[JobGenius] Resume title:", resumeTitle);
+    console.log("[ApplyHawk] Resume title:", resumeTitle);
 
     // Step 2: Create new resume on HH.ru
     btn.innerHTML = '<span class="spinner"></span> Создание резюме...';
@@ -778,7 +778,7 @@ async function submitApplication() {
     }
 
     const resumeHashToUse = createResponse.resumeHash;
-    console.log("[JobGenius] Created resume:", resumeHashToUse);
+    console.log("[ApplyHawk] Created resume:", resumeHashToUse);
 
     // Step 3: Apply to vacancy
     btn.innerHTML = '<span class="spinner"></span> Отправка отклика...';

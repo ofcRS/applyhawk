@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "JobGenius",
+  "name": "ApplyHawk",
   "description": "AI-powered job application automation with personalized resumes and cover letters",
   "version": "1.0.0",
   "permissions": [

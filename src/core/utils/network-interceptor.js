@@ -248,6 +248,6 @@
   };
 
   // Signal that interceptor is loaded
-  console.log("[JobGenius] Network interceptor loaded");
+  console.log("[ApplyHawk] Network interceptor loaded");
   window.postMessage({ type: "HH_INTERCEPTOR_READY" }, "*");
 })();

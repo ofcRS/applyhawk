@@ -1,6 +1,6 @@
-# HH AutoApply
+# ApplyHawk
 
-AI-powered Chrome extension for automating job applications on HH.ru (HeadHunter) with personalized resumes and cover letters.
+AI-powered Chrome extension for automating job applications with personalized resumes and cover letters.
 
 <img width="720"  alt="image" src="https://github.com/user-attachments/assets/f8b2358b-2cc9-4d14-8ad2-a8186334e277" />
 <img width="720" alt="image" src="https://github.com/user-attachments/assets/18695e9e-b8e2-4ef0-a00a-1e4cef9fe587" />
@@ -14,21 +14,27 @@ AI-powered Chrome extension for automating job applications on HH.ru (HeadHunter
 
 - **AI Resume Personalization** - Automatically rewrites your resume to match each job's requirements
 - **PDF Resume Generation** - Create professional PDF resumes with Noto Serif fonts (Cyrillic support)
-- **Smart Cover Letters** - Generates personalized cover letters in Russian using AI
+- **Smart Cover Letters** - Generates personalized cover letters using AI
 - **PDF Import** - Import your existing resume from PDF and auto-fill all fields
 - **Fit Score Analysis** - See how well your profile matches each vacancy
-- **One-Click Apply** - Streamlined 4-step application flow
-- **Research Mode** - Capture and analyze HH.ru API calls for debugging
+- **One-Click Apply** - Streamlined application flow
+- **Research Mode** - Capture and analyze API calls for debugging
+
+## Supported Platforms
+
+- **HH.ru** (HeadHunter) - Full support
+- **LinkedIn** - Coming soon
+- **Indeed** - Coming soon
 
 ## How It Works
 
 ```
-Your Base Resume → AI Analyzes Job Requirements → Personalized Resume + Cover Letter → Auto-Submit
+Your Base Resume → AI Analyzes Job Requirements → Personalized Resume + Cover Letter → Submit
 ```
 
 1. **Set up your base resume** - Either import from PDF or fill manually in settings
-2. **Browse vacancies on HH.ru** - Find jobs you're interested in
-3. **Click "AI Отклик"** - Our button appears next to every vacancy
+2. **Browse job listings** - Find jobs you're interested in
+3. **Click the AI button** - Our button appears next to job listings
 4. **Review & Submit** - AI personalizes your resume, generates a cover letter, and submits
 
 ## Installation
@@ -42,8 +48,8 @@ Your Base Resume → AI Analyzes Job Requirements → Personalized Resume + Cove
 
 ```bash
 # Clone the repository
-git clone https://github.com/ofcRS/hh-autoapply.git
-cd hh-autoapply
+git clone https://github.com/ofcRS/applyhawk.git
+cd applyhawk
 
 # Install dependencies
 bun install
@@ -63,7 +69,7 @@ bun run build
 
 1. **OpenRouter API Key** - Get one from [openrouter.ai/keys](https://openrouter.ai/keys)
 2. **Your Resume** - Fill in the settings page or import from PDF
-3. **HH.ru Login** - Make sure you're logged into hh.ru
+3. **Platform Login** - Make sure you're logged into the job platform
 
 ## Tech Stack
 
@@ -97,8 +103,6 @@ src/
 │   ├── options/                # Settings page
 │   └── shared/                 # Design system & components
 ├── prompts/                    # YAML prompt templates
-├── background-scripts/         # Legacy background scripts
-├── content-scripts/            # Legacy content scripts
 └── fonts/                      # Noto Sans/Serif TTF fonts
 ```
 
@@ -126,11 +130,11 @@ The extension uses OpenRouter to access various AI models. Recommended models:
 - Your API key is stored locally in Chrome storage
 - Resume data never leaves your browser except for AI processing
 - No analytics or tracking
-- All communication with HH.ru uses your existing session cookies
+- All communication with job platforms uses your existing session cookies
 
 ## Disclaimer
 
-This extension is for educational purposes. Use responsibly and in accordance with HH.ru's terms of service. The developers are not responsible for any consequences of using this tool.
+This extension is for educational purposes. Use responsibly and in accordance with each platform's terms of service. The developers are not responsible for any consequences of using this tool.
 
 ## License
 
@@ -138,4 +142,4 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-Made with AI assistance for the Russian job market
+Made with AI assistance

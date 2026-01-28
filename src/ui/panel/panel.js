@@ -1,5 +1,5 @@
 /**
- * JobGenius Side Panel
+ * ApplyHawk Side Panel
  * Handles the tabbed UI for resume generation, cover letters, and job applications
  */
 

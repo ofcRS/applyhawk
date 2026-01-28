@@ -1089,21 +1089,52 @@ function generatePdfFilename(vacancy) {
 }
 
 /**
- * Download PDF file
+ * Download PDF file - opens in new tab for preview and shows save dialog
  * @param {Uint8Array} pdfBytes - PDF content
  * @param {string} filename - File name
  */
-function downloadPdf(pdfBytes, filename) {
+async function downloadPdf(pdfBytes, filename) {
   const blob = new Blob([pdfBytes], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // 1. Open PDF in new browser tab for preview
+  window.open(url, "_blank");
+
+  // 2. Show save dialog using File System Access API
+  try {
+    if (window.showSaveFilePicker) {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: filename,
+        types: [
+          {
+            description: "PDF Document",
+            accept: { "application/pdf": [".pdf"] },
+          },
+        ],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      showToast("PDF saved successfully!", "success");
+    } else {
+      // Fallback: browser doesn't support showSaveFilePicker
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  } catch (err) {
+    // User cancelled the save dialog - that's OK
+    if (err.name !== "AbortError") {
+      console.error("Save failed:", err);
+      showToast("Failed to save PDF", "error");
+    }
+  }
+
+  // Note: Don't revoke URL immediately - the new tab needs it
+  // Browser will clean up when tab is closed
 }
 
 // Initialize

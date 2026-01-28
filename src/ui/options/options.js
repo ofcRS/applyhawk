@@ -1,5 +1,5 @@
 /**
- * JobGenius Options Page
+ * ApplyHawk Options Page
  * Handles settings and resume editing with tabbed interface
  */
 
