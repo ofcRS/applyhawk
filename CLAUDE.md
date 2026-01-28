@@ -1,37 +1,13 @@
-# HH Job AutoApply - Chrome Extension
+# ApplyHawk - Chrome Extension
 
-## Project Overview
-Chrome Extension (Manifest V3) for automating HH.ru job applications with AI-generated personalized resumes and cover letters.
-
-## Current Status: Ready for Testing
-
-The extension bypasses the shut-down official HH.ru API by using internal API endpoints discovered via network interception.
-
-### Full User Flow
-```
-User has master resume in extension settings (via PDF import or manual entry)
-       ↓
-Opens job listing on HH.ru
-       ↓
-Clicks "AI Отклик" button
-       ↓
-Extension parses job requirements from DOM
-       ↓
-AI fully rewrites resume tailored to this job
-       ↓
-Extension updates resume on HH.ru (internal API)
-       ↓
-AI generates cover letter
-       ↓
-Extension submits application (internal API)
-```
+AI-powered Chrome extension for automating job applications with personalized resumes and cover letters.
 
 ## Tech Stack
 - **Build:** esbuild + bun
 - **Linting:** Biome
 - **Language:** Vanilla JavaScript (ES Modules)
 - **AI:** OpenRouter API (Claude, GPT-4o, Gemini, etc.)
-- **PDF:** pdfjs-dist (for PDF text extraction)
+- **PDF:** pdfjs-dist (text extraction), custom PDF generator (output)
 
 ## Commands
 ```bash
@@ -42,125 +18,95 @@ bun run lint         # Lint and fix with Biome
 bun run format       # Format with Biome
 ```
 
+## Loading in Chrome
+1. `bun run build`
+2. Open `chrome://extensions`
+3. Enable "Developer mode"
+4. "Load unpacked" → select `dist/` folder
+
+## Configuration
+1. **OpenRouter API key** - https://openrouter.ai/keys (Side Panel → Platforms tab)
+2. **AI Model** - Side Panel → Platforms tab (Top/All/Budget categories)
+3. **Base resume** - Options page (manual entry or PDF import)
+4. **Platform login** - Must be logged into HH.ru
+
 ## Project Structure
 ```
 src/
-├── background-scripts/
-│   ├── background.js       # Message routing hub
-│   ├── hh-internal-api.js  # HH.ru internal API client (resume update, apply)
-│   ├── openrouter.js       # AI: cover letters, resume personalization, PDF parsing
-│   ├── oauth.js            # HH.ru OAuth (legacy, API shut down)
-│   └── hh-api.js           # HH.ru official API (broken, kept for reference)
-├── content-scripts/
-│   ├── hh-vacancy.js       # Main UI: 4-step apply flow modal
-│   ├── hh-vacancy.css      # Modal and button styles
-│   ├── hh-injector.js      # Injects network interceptor
-│   └── network-interceptor.js  # Captures HH.ru API calls (research mode)
-├── panel/
-│   ├── panel.html/js/css   # Side panel: AI model selector, API key, research mode
-├── options/
-│   ├── options.html/js/css # Settings: resume editor, PDF import, general prefs
-├── lib/
-│   └── storage.js          # Chrome storage wrapper
-└── utils/
-    └── vacancy-parser.js   # Parse vacancy from DOM
+├── background.js                 # Service worker entry point
+├── core/                         # Shared modules
+│   ├── ai/openrouter.js          # OpenRouter API client
+│   ├── background/message-router.js  # Chrome message handling
+│   ├── lib/
+│   │   ├── pdf-generator.js      # PDF resume generation
+│   │   ├── prompt-loader.js      # YAML prompt loading
+│   │   └── storage.js            # Chrome storage wrapper
+│   └── utils/network-interceptor.js  # Research mode API capture
+├── platforms/
+│   └── hh/                       # HH.ru platform
+│       ├── api/hh-internal-api.js    # HH.ru internal API client
+│       ├── content/
+│       │   ├── injector.js       # Network interceptor injection
+│       │   ├── vacancy-parser.js # Parse vacancy from DOM
+│       │   └── vacancy-ui.js     # AI Apply button & modal
+│       ├── handlers/hh-handlers.js   # Message handlers
+│       └── styles/vacancy.css    # Content script styles
+├── ui/
+│   ├── panel/                    # Side panel (AI settings, research mode)
+│   ├── options/                  # Settings page (resume editor)
+│   └── shared/                   # Design tokens, components
+├── prompts/                      # YAML prompt templates
+│   ├── resume-personalization.yaml
+│   ├── cover-letter.yaml
+│   ├── fit-assessment.yaml
+│   ├── pdf-parser.yaml
+│   ├── resume-title.yaml
+│   └── universal-vacancy-parse.yaml
+└── fonts/                        # Noto Sans/Serif for PDF
 ```
 
-## Loading Extension in Chrome
-1. Run `bun run build`
-2. Open chrome://extensions
-3. Enable "Developer mode"
-4. Click "Load unpacked" → select `dist/` folder
+Note: `src/background-scripts/`, `src/content-scripts/`, `src/lib/`, `src/options/`, `src/panel/` are legacy duplicates - the active code is in `src/core/` and `src/platforms/`.
 
-## Configuration Required
-1. **OpenRouter API key** - Get from https://openrouter.ai/keys (set in Panel → Platforms tab)
-2. **AI Model** - Select in Panel → Platforms tab (categories: Top/All/Budget with pricing info)
-3. **Base resume** - Fill manually or import from PDF in Options page
-4. **HH.ru login** - Must be logged into hh.ru (uses session cookies)
+## Supported Platforms
+- **HH.ru** - Full support
+- **LinkedIn** - Planned
+- **Indeed** - Planned
 
-## HH.ru Internal API (Discovered)
-
-### Resume Update
+## User Flow
 ```
-POST https://resume-profile-front.hh.ru/profile/shards/resume/update
-Headers: X-Xsrftoken, X-Requested-With: XMLHttpRequest
-Body: { resumeHash, currentScreenId: "experience"|"keyskills", resume: {...} }
+Base resume (Options) → Open vacancy on HH.ru → Click "AI Отклик" button
+    → AI personalizes resume → Updates resume on HH.ru
+    → AI generates cover letter → Submits application
 ```
 
-### Apply to Vacancy
-```
-POST https://hh.ru/applicant/vacancy_response/popup
-Headers: X-Xsrftoken, X-Requested-With: XMLHttpRequest
-Body: { vacancy_id, resume_hash, letter, _xsrf, ... }
-```
+## Message Types
 
-### XSRF Token
-Extracted from `_xsrf` cookie on hh.ru domain.
+| Message | Description |
+|---------|-------------|
+| `CHECK_HH_AUTH` | Check HH.ru login status |
+| `GET_USER_RESUMES` | Fetch user's resumes |
+| `UPDATE_RESUME_EXPERIENCE` | Update resume experience |
+| `UPDATE_RESUME_SKILLS` | Update resume skills |
+| `APPLY_INTERNAL` | Submit application |
+| `GENERATE_PERSONALIZED_RESUME` | AI resume rewrite |
+| `GENERATE_COVER_LETTER` | AI cover letter |
+| `PARSE_RESUME_PDF` | Parse PDF to structured data |
 
 ## Key Features
 
-### 1. PDF Resume Import (Options Page)
-- Upload PDF → pdfjs-dist extracts text → AI parses into structured format
-- Auto-fills all form fields
-
-### 2. AI Resume Personalization
-- Takes base resume + vacancy requirements
-- Rewrites experience descriptions to match job
+### AI Resume Personalization
+- Rewrites experience descriptions to match job requirements
 - Reorders/filters skills by relevance
-- Output matches HH.ru's expected format
+- Generates professional resume title
 
-### 3. AI Cover Letter Generation
-- Analyzes vacancy and resume
-- Generates personalized cover letter in Russian
-- Avoids clichés, includes specific achievements
+### Cover Letter Generation
+- Analyzes vacancy + resume
+- Avoids clichés, uses specific achievements
+- Russian language output for HH.ru
 
-### 4. Research Mode (Side Panel)
-- Toggle to capture all HH.ru API calls
-- Export captured requests as JSON
-- Used for discovering new endpoints
+### PDF Import (Options)
+- Upload PDF → pdfjs extracts text → AI parses into fields
 
-### 5. AI Settings (Side Panel → Platforms Tab)
-- API Key input with validation
-- Model selector with categories (Top/All/Budget)
-- Live model list with pricing and context size info
-- Selected model display card
-
-## Message Types (Background Script)
-
-| Message | Handler |
-|---------|---------|
-| `CHECK_HH_AUTH` | Check if user is logged into HH.ru |
-| `GET_USER_RESUMES` | Fetch user's resumes from HH.ru |
-| `UPDATE_RESUME_EXPERIENCE` | Update resume experience section |
-| `UPDATE_RESUME_SKILLS` | Update resume skills section |
-| `APPLY_INTERNAL` | Submit job application |
-| `GENERATE_PERSONALIZED_RESUME` | AI: rewrite resume for vacancy |
-| `GENERATE_COVER_LETTER` | AI: generate cover letter |
-| `PARSE_RESUME_PDF` | AI: parse PDF text into resume format |
-| `GET_SETTINGS` / `GET_BASE_RESUME` | Read from storage |
-
-## 4-Step Apply Flow (hh-vacancy.js)
-
-1. **Select Resume** - Choose which HH.ru resume to personalize
-2. **Generate Personalized Resume** - AI rewrites experience/skills for this job
-3. **Update on HH.ru** - Push changes to the actual resume
-4. **Generate Cover Letter & Apply** - Create letter and submit application
-
-## Historical Context
-
-### HH.ru API Shutdown (December 15, 2024)
-The official job seeker API was shut down. This extension now uses internal APIs discovered via network interception (Research Mode).
-
-### OAuth (Legacy)
-OAuth flow still works for obtaining tokens, but all API endpoints return 403 Forbidden.
-- Client ID: `Q98DOG1S30C16RKMGPS9879R8MQVC78P5F0A80LH95VOTUQDLLDNMDM80C8DF8LQ`
-- Redirect URI: `chrome-extension://<extension-id>/oauth-callback.html`
-
-## Testing Checklist
-- [ ] PDF import works in Options
-- [ ] Base resume saves correctly
-- [ ] "AI Отклик" button appears on vacancy pages
-- [ ] Resume personalization generates valid output
-- [ ] Resume updates on HH.ru (verify on resume page)
-- [ ] Cover letter generates
-- [ ] Application submits (check "Отклики" on HH.ru)
+### Research Mode (Side Panel)
+- Captures all API requests for debugging
+- Export as JSON
