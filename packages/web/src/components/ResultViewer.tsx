@@ -1,7 +1,22 @@
-import { useState, useCallback } from 'react';
-import { generatePdfResume } from '@applyhawk/core';
-import type { Vacancy, PersonalizedResume, CoverLetterResult, Resume } from '@applyhawk/core';
-import styles from './ResultViewer.module.css';
+import { generatePdfResume } from "@applyhawk/core";
+import type {
+  CoverLetterResult,
+  PDFGeneratorConfig,
+  PersonalizedResume,
+  Resume,
+  Vacancy,
+} from "@applyhawk/core";
+import { useCallback, useState } from "react";
+import styles from "./ResultViewer.module.css";
+
+// Noto Serif fonts from jsDelivr CDN (support Cyrillic)
+const PDF_CONFIG: PDFGeneratorConfig = {
+  fontUrls: {
+    regular:
+      "https://cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSerif/hinted/ttf/NotoSerif-Regular.ttf",
+    bold: "https://cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSerif/hinted/ttf/NotoSerif-Bold.ttf",
+  },
+};
 
 interface ResultViewerProps {
   vacancy: Vacancy;
@@ -12,7 +27,7 @@ interface ResultViewerProps {
   onEditResume: () => void;
 }
 
-type Tab = 'resume' | 'cover-letter';
+type Tab = "resume" | "cover-letter";
 
 export default function ResultViewer({
   vacancy,
@@ -22,7 +37,7 @@ export default function ResultViewer({
   onStartOver,
   onEditResume,
 }: ResultViewerProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('resume');
+  const [activeTab, setActiveTab] = useState<Tab>("resume");
   const [copied, setCopied] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
@@ -32,26 +47,30 @@ export default function ResultViewer({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      console.error("Failed to copy:", err);
     }
   }, []);
 
   const handleDownloadPdf = useCallback(async () => {
     setIsGeneratingPdf(true);
     try {
-      const pdfBytes = await generatePdfResume(personalizedResume, baseResume);
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const pdfBytes = await generatePdfResume(
+        personalizedResume,
+        baseResume,
+        PDF_CONFIG,
+      );
+      const blob = new Blob([pdfBytes], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `Resume_${baseResume.fullName.replace(/\s+/g, '_')}.pdf`;
+      a.download = `Resume_${baseResume.fullName.replace(/\s+/g, "_")}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Failed to generate PDF:', err);
-      alert('Failed to generate PDF. Please try again.');
+      console.error("Failed to generate PDF:", err);
+      alert("Failed to generate PDF. Please try again.");
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -79,14 +98,14 @@ export default function ResultViewer({
       {/* Tabs */}
       <div className={styles.tabs}>
         <button
-          className={`${styles.tab} ${activeTab === 'resume' ? styles.active : ''}`}
-          onClick={() => setActiveTab('resume')}
+          className={`${styles.tab} ${activeTab === "resume" ? styles.active : ""}`}
+          onClick={() => setActiveTab("resume")}
         >
           📄 Personalized Resume
         </button>
         <button
-          className={`${styles.tab} ${activeTab === 'cover-letter' ? styles.active : ''}`}
-          onClick={() => setActiveTab('cover-letter')}
+          className={`${styles.tab} ${activeTab === "cover-letter" ? styles.active : ""}`}
+          onClick={() => setActiveTab("cover-letter")}
         >
           ✉️ Cover Letter
         </button>
@@ -94,7 +113,7 @@ export default function ResultViewer({
 
       {/* Content */}
       <div className={styles.content}>
-        {activeTab === 'resume' && (
+        {activeTab === "resume" && (
           <div className={styles.resumeView}>
             <div className={styles.sectionCard}>
               <h3>{personalizedResume.title}</h3>
@@ -107,7 +126,9 @@ export default function ResultViewer({
               <h4>Key Skills</h4>
               <div className={styles.skills}>
                 {personalizedResume.keySkills.map((skill, i) => (
-                  <span key={i} className={styles.skill}>{skill}</span>
+                  <span key={i} className={styles.skill}>
+                    {skill}
+                  </span>
                 ))}
               </div>
             </div>
@@ -117,14 +138,16 @@ export default function ResultViewer({
                 <div className={styles.expHeader}>
                   <div>
                     <h4>{exp.position}</h4>
-                    <p className={styles.company}>{exp.companyName || exp.company}</p>
+                    <p className={styles.company}>
+                      {exp.companyName || exp.company}
+                    </p>
                   </div>
                   <span className={styles.dates}>
-                    {exp.startDate} — {exp.endDate || 'Present'}
+                    {exp.startDate} — {exp.endDate || "Present"}
                   </span>
                 </div>
                 <div className={styles.description}>
-                  {exp.description?.split('\n').map((line, j) => (
+                  {exp.description?.split("\n").map((line, j) => (
                     <p key={j}>{line}</p>
                   ))}
                 </div>
@@ -143,19 +166,19 @@ export default function ResultViewer({
                     Generating PDF...
                   </>
                 ) : (
-                  '📥 Download as PDF'
+                  "📥 Download as PDF"
                 )}
               </button>
             </div>
           </div>
         )}
 
-        {activeTab === 'cover-letter' && (
+        {activeTab === "cover-letter" && (
           <div className={styles.coverLetterView}>
             {coverLetter ? (
               <>
                 <div className={styles.letterContent}>
-                  {coverLetter.coverLetter.split('\n').map((para, i) => (
+                  {coverLetter.coverLetter.split("\n").map((para, i) => (
                     <p key={i}>{para}</p>
                   ))}
                 </div>
@@ -164,7 +187,7 @@ export default function ResultViewer({
                     className="btn btn-primary"
                     onClick={() => handleCopy(coverLetter.coverLetter)}
                   >
-                    {copied ? '✓ Copied!' : '📋 Copy to Clipboard'}
+                    {copied ? "✓ Copied!" : "📋 Copy to Clipboard"}
                   </button>
                 </div>
               </>
@@ -181,7 +204,10 @@ export default function ResultViewer({
       {personalizedResume.appliedAggressiveness !== undefined && (
         <div className={styles.stats}>
           <span>
-            Personalization level: <strong>{Math.round(personalizedResume.appliedAggressiveness * 100)}%</strong>
+            Personalization level:{" "}
+            <strong>
+              {Math.round(personalizedResume.appliedAggressiveness * 100)}%
+            </strong>
           </span>
         </div>
       )}
