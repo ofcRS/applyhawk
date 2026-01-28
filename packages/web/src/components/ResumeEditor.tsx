@@ -1,14 +1,23 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { Resume, Experience, Education } from '@applyhawk/core';
+import * as pdfjsLib from 'pdfjs-dist';
 import styles from './ResumeEditor.module.css';
+
+// Set up PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url
+).toString();
 
 interface ResumeEditorProps {
   resume: Resume | null;
   onSave: (resume: Partial<Resume>) => Promise<void>;
   onContinue: () => void;
+  onParsePDF?: (pdfText: string) => Promise<{ success: boolean; resume: Resume }>;
+  isParsingPDF?: boolean;
 }
 
-export default function ResumeEditor({ resume, onSave, onContinue }: ResumeEditorProps) {
+export default function ResumeEditor({ resume, onSave, onContinue, onParsePDF, isParsingPDF = false }: ResumeEditorProps) {
   const [formData, setFormData] = useState<Resume>(resume || {
     fullName: '',
     title: '',
@@ -20,6 +29,63 @@ export default function ResumeEditor({ resume, onSave, onContinue }: ResumeEdito
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const extractTextFromPdf = async (file: File): Promise<string> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+    let fullText = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .map((item) => ('str' in item ? item.str : ''))
+        .join(' ');
+      fullText += pageText + '\n';
+    }
+
+    return fullText.trim();
+  };
+
+  const handlePdfUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !onParsePDF) return;
+
+    setPdfError(null);
+
+    try {
+      const pdfText = await extractTextFromPdf(file);
+
+      if (pdfText.length < 100) {
+        setPdfError('Could not extract text from PDF. Make sure it contains selectable text.');
+        return;
+      }
+
+      const result = await onParsePDF(pdfText);
+
+      if (result.success && result.resume) {
+        setFormData({
+          fullName: result.resume.fullName || '',
+          title: result.resume.title || '',
+          summary: result.resume.summary || '',
+          experience: result.resume.experience || [],
+          education: result.resume.education || [],
+          skills: result.resume.skills || [],
+          contacts: result.resume.contacts || { email: '', phone: '', telegram: '', linkedin: '' },
+        });
+      }
+    } catch (err) {
+      console.error('PDF parsing failed:', err);
+      setPdfError(err instanceof Error ? err.message : 'Failed to parse PDF');
+    } finally {
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  }, [onParsePDF]);
 
   const handleChange = useCallback((field: keyof Resume, value: unknown) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -107,6 +173,41 @@ export default function ResumeEditor({ resume, onSave, onContinue }: ResumeEdito
     <div className={styles.editor}>
       <h2>Your Resume</h2>
       <p className={styles.subtitle}>Fill in your information once, personalize for every job.</p>
+
+      {/* PDF Upload */}
+      {onParsePDF && (
+        <section className={styles.uploadSection}>
+          <div className={styles.uploadBox}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf"
+              onChange={handlePdfUpload}
+              disabled={isParsingPDF}
+              className={styles.fileInput}
+              id="pdf-upload"
+            />
+            <label htmlFor="pdf-upload" className={styles.uploadLabel}>
+              {isParsingPDF ? (
+                <>
+                  <span className={styles.uploadSpinner} />
+                  <span>Parsing your resume...</span>
+                </>
+              ) : (
+                <>
+                  <span className={styles.uploadIcon}>📄</span>
+                  <span>Upload existing resume (PDF)</span>
+                  <span className={styles.uploadHint}>AI will extract your information automatically</span>
+                </>
+              )}
+            </label>
+          </div>
+          {pdfError && <p className={styles.uploadError}>{pdfError}</p>}
+          <div className={styles.divider}>
+            <span>or fill manually</span>
+          </div>
+        </section>
+      )}
 
       {/* Basic Info */}
       <section className={styles.section}>

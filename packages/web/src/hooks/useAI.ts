@@ -11,6 +11,7 @@ import type {
   PersonalizedResume,
   CoverLetterResult,
   ParsedVacancyResult,
+  ParsedResumeResult,
 } from '@applyhawk/core';
 
 // Create prompt loader for web (loads from /prompts/ directory)
@@ -120,10 +121,35 @@ export function useAI(settings: Settings) {
     }
   }, [client, settings]);
 
+  const parseResumePDF = useCallback(async (pdfText: string): Promise<ParsedResumeResult> => {
+    if (!client) {
+      throw new Error('Please configure your OpenRouter API key in Settings');
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const language = detectLanguage(pdfText);
+      const result = await client.parseResumePDF(
+        pdfText,
+        (vars) => promptLoader.buildPromptFromTemplate('pdf-parser', vars, language)
+      );
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to parse resume PDF';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [client]);
+
   return {
     parseVacancy,
     generatePersonalizedResume,
     generateCoverLetter,
+    parseResumePDF,
     isLoading,
     error,
     isConfigured: !!client,

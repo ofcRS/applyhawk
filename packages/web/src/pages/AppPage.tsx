@@ -5,7 +5,7 @@ import ResumeEditor from '../components/ResumeEditor';
 import JobInput from '../components/JobInput';
 import ResultViewer from '../components/ResultViewer';
 import SettingsPanel from '../components/SettingsPanel';
-import type { PersonalizedResume, Vacancy, CoverLetterResult } from '@applyhawk/core';
+import type { PersonalizedResume, Vacancy, CoverLetterResult, Resume } from '@applyhawk/core';
 import styles from './AppPage.module.css';
 
 interface AppPageProps {
@@ -16,7 +16,8 @@ type Step = 'resume' | 'job' | 'result';
 
 export default function AppPage({ onBack }: AppPageProps) {
   const { resume, settings, updateResume, updateSettings, isLoaded } = useStorage();
-  const { generatePersonalizedResume, generateCoverLetter, isLoading, error } = useAI(settings);
+  const { generatePersonalizedResume, generateCoverLetter, parseResumePDF, isLoading, error } = useAI(settings);
+  const [isParsingPDF, setIsParsingPDF] = useState(false);
 
   const [step, setStep] = useState<Step>('resume');
   const [vacancy, setVacancy] = useState<Vacancy | null>(null);
@@ -27,6 +28,16 @@ export default function AppPage({ onBack }: AppPageProps) {
   const handleResumeComplete = useCallback(() => {
     setStep('job');
   }, []);
+
+  const handleParsePDF = useCallback(async (pdfText: string): Promise<{ success: boolean; resume: Resume }> => {
+    setIsParsingPDF(true);
+    try {
+      const result = await parseResumePDF(pdfText);
+      return result;
+    } finally {
+      setIsParsingPDF(false);
+    }
+  }, [parseResumePDF]);
 
   const handleJobSubmit = useCallback(async (parsedVacancy: Vacancy) => {
     setVacancy(parsedVacancy);
@@ -121,6 +132,8 @@ export default function AppPage({ onBack }: AppPageProps) {
                 resume={resume}
                 onSave={updateResume}
                 onContinue={handleResumeComplete}
+                onParsePDF={settings.openRouterApiKey ? handleParsePDF : undefined}
+                isParsingPDF={isParsingPDF}
               />
             )}
 
