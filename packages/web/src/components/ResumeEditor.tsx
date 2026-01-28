@@ -3,11 +3,8 @@ import type { Resume, Experience, Education } from '@applyhawk/core';
 import * as pdfjsLib from 'pdfjs-dist';
 import styles from './ResumeEditor.module.css';
 
-// Set up PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString();
+// Set up PDF.js worker from CDN (avoids MIME type issues with self-hosted .mjs files)
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
 
 interface ResumeEditorProps {
   resume: Resume | null;
