@@ -40,9 +40,13 @@ export default function SettingsPanel({
     contactEmail: settings.contactEmail || "",
     contactTelegram: settings.contactTelegram || "",
     salaryExpectation: settings.salaryExpectation || "",
-    aggressiveness: settings.aggressiveFit?.aggressivenessOverride !== null
-      ? Math.round((settings.aggressiveFit?.aggressivenessOverride ?? 0.5) * 100)
-      : 50,
+    aggressiveness:
+      settings.aggressiveFit?.aggressivenessOverride !== null
+        ? Math.round(
+            (settings.aggressiveFit?.aggressivenessOverride ?? 0.5) * 100,
+          )
+        : 50,
+    adaptJobTitles: settings.adaptJobTitles ?? false,
   });
 
   const [allModels, setAllModels] = useState<OpenRouterModel[]>([]);
@@ -158,7 +162,7 @@ export default function SettingsPanel({
   }, []);
 
   const handleSave = useCallback(() => {
-    const { aggressiveness, ...rest } = formData;
+    const { aggressiveness, adaptJobTitles, ...rest } = formData;
     onSave({
       ...rest,
       aggressiveFit: {
@@ -167,6 +171,7 @@ export default function SettingsPanel({
         maxAggressiveness: 0.95,
         aggressivenessOverride: aggressiveness / 100,
       },
+      adaptJobTitles,
     });
   }, [formData, onSave]);
 
@@ -297,14 +302,21 @@ export default function SettingsPanel({
           <div className="field">
             <div className={styles.sliderHeader}>
               <label className="label">Resume Personalization Level</label>
-              <span className={styles.sliderValue}>{formData.aggressiveness}%</span>
+              <span className={styles.sliderValue}>
+                {formData.aggressiveness}%
+              </span>
             </div>
             <input
               type="range"
               min="0"
               max="100"
               value={formData.aggressiveness}
-              onChange={(e) => setFormData(prev => ({ ...prev, aggressiveness: parseInt(e.target.value, 10) }))}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  aggressiveness: Number.parseInt(e.target.value, 10),
+                }))
+              }
               className={styles.slider}
             />
             <div className={styles.sliderLabels}>
@@ -312,8 +324,31 @@ export default function SettingsPanel({
               <span>Aggressive</span>
             </div>
             <p className={styles.hint}>
-              Higher values make AI adapt your resume more to match job requirements.
-              Lower values keep it closer to your original experience.
+              Higher values make AI adapt your resume more to match job
+              requirements. Lower values keep it closer to your original
+              experience.
+            </p>
+          </div>
+
+          {/* Adapt Job Titles checkbox */}
+          <div className="field">
+            <label className={styles.checkbox}>
+              <input
+                type="checkbox"
+                checked={formData.adaptJobTitles}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    adaptJobTitles: e.target.checked,
+                  }))
+                }
+              />
+              <span>Adapt job titles to match vacancy</span>
+            </label>
+            <p className={styles.hint}>
+              When enabled, AI will modify your position titles to better match
+              the target job. When disabled, your original job titles remain
+              unchanged.
             </p>
           </div>
         </section>

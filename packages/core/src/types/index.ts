@@ -90,6 +90,7 @@ export interface Settings {
   contactTelegram?: string;
   salaryExpectation?: string;
   aggressiveFit: AggressiveFitSettings;
+  adaptJobTitles?: boolean;
 }
 
 // ============ AI Response Types ============
@@ -178,7 +179,7 @@ export interface AIClientConfig {
 }
 
 export interface AICallOptions {
-  messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+  messages: Array<{ role: "user" | "assistant" | "system"; content: string }>;
   temperature?: number;
   max_tokens?: number;
   model?: string;
@@ -195,4 +196,4 @@ export interface PDFGeneratorConfig {
 
 // ============ Language Detection ============
 
-export type Language = 'en' | 'ru';
+export type Language = "en" | "ru";

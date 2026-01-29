@@ -3,6 +3,7 @@
  * Reusable AI client that works with both web and extension
  */
 
+import type { BuiltPrompt } from "../prompts";
 import type {
   AICallOptions,
   AIClientConfig,
@@ -17,16 +18,18 @@ import type {
   Resume,
   Settings,
   Vacancy,
-} from '../types';
-import type { BuiltPrompt } from '../prompts';
+} from "../types";
 
-const OPENROUTER_API = 'https://openrouter.ai/api/v1/chat/completions';
-const DEFAULT_MODEL = 'anthropic/claude-sonnet-4';
+const OPENROUTER_API = "https://openrouter.ai/api/v1/chat/completions";
+const DEFAULT_MODEL = "anthropic/claude-sonnet-4";
 
 /**
  * Calculate aggressiveness level based on fit score
  */
-export function calculateAggressiveness(fitScore: number, override: number | null = null): number {
+export function calculateAggressiveness(
+  fitScore: number,
+  override: number | null = null,
+): number {
   if (override !== null) {
     return Math.max(0, Math.min(1, override));
   }
@@ -40,7 +43,7 @@ export function calculateAggressiveness(fitScore: number, override: number | nul
 export function shouldSkipVacancy(
   fitScore: number,
   minFitScore = 0.15,
-  maxAggressiveness = 0.95
+  maxAggressiveness = 0.95,
 ): { skip: boolean; reason?: string } {
   if (fitScore < minFitScore) {
     return {
@@ -64,15 +67,15 @@ export function shouldSkipVacancy(
  * Strip HTML tags from text
  */
 export function stripHtml(html: string | undefined | null): string {
-  if (!html) return '';
+  if (!html) return "";
   return html
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
-    .replace(/\s+/g, ' ')
+    .replace(/\s+/g, " ")
     .trim();
 }
 
@@ -80,7 +83,7 @@ export function stripHtml(html: string | undefined | null): string {
  * Format experience array into readable text
  */
 export function formatExperience(experience: Experience[] | undefined): string {
-  if (!experience?.length) return 'No experience specified';
+  if (!experience?.length) return "No experience specified";
 
   return experience
     .map((exp) => {
@@ -88,34 +91,36 @@ export function formatExperience(experience: Experience[] | undefined): string {
         ? `${exp.startDate} - ${exp.endDate}`
         : `${exp.startDate} - present`;
       const achievements = exp.achievements?.length
-        ? `\n  Achievements: ${exp.achievements.join('; ')}`
-        : '';
+        ? `\n  Achievements: ${exp.achievements.join("; ")}`
+        : "";
       return `- ${exp.position} at ${exp.companyName || exp.company} (${period})
-  ${exp.description || ''}${achievements}`;
+  ${exp.description || ""}${achievements}`;
     })
-    .join('\n');
+    .join("\n");
 }
 
 /**
  * Format experience for resume personalization prompt
  */
-export function formatExperienceForPersonalization(experience: Experience[]): string {
+export function formatExperienceForPersonalization(
+  experience: Experience[],
+): string {
   return experience
     .map((exp, i) => {
       return `[${i + 1}] ${exp.position} @ ${exp.companyName || exp.company}
-${exp.startDate} — ${exp.endDate || '...'}
+${exp.startDate} — ${exp.endDate || "..."}
 ---
-${exp.description || ''}
-${exp.achievements?.length ? `+ ${exp.achievements.join('; ')}` : ''}`;
+${exp.description || ""}
+${exp.achievements?.length ? `+ ${exp.achievements.join("; ")}` : ""}`;
     })
-    .join('\n\n');
+    .join("\n\n");
 }
 
 /**
  * Format personalized experience for cover letter prompt
  */
 function formatExperienceForCoverLetter(experience: Experience[]): string {
-  if (!experience?.length) return 'No experience provided';
+  if (!experience?.length) return "No experience provided";
 
   return experience
     .map((exp) => {
@@ -123,9 +128,9 @@ function formatExperienceForCoverLetter(experience: Experience[]): string {
         ? `${exp.startDate} — ${exp.endDate}`
         : `${exp.startDate} — present`;
       return `${exp.position} at ${exp.companyName || exp.company} (${period})
-${exp.description || ''}`;
+${exp.description || ""}`;
     })
-    .join('\n\n');
+    .join("\n\n");
 }
 
 /**
@@ -139,7 +144,11 @@ function parseJsonResponse<T>(content: string, errorContext: string): T {
     const jsonStr = jsonMatch ? jsonMatch[1] || jsonMatch[0] : content;
     return JSON.parse(jsonStr) as T;
   } catch (parseError) {
-    console.error(`[OpenRouter] Failed to parse ${errorContext} JSON:`, parseError, content);
+    console.error(
+      `[OpenRouter] Failed to parse ${errorContext} JSON:`,
+      parseError,
+      content,
+    );
     throw new Error(`Failed to parse ${errorContext}. Please try again.`);
   }
 }
@@ -168,14 +177,16 @@ export class OpenRouterClient {
   /**
    * Make an API call to OpenRouter
    */
-  async call(options: AICallOptions): Promise<{ content: string; model: string; usage?: AIUsage }> {
+  async call(
+    options: AICallOptions,
+  ): Promise<{ content: string; model: string; usage?: AIUsage }> {
     const { messages, temperature = 0.7, max_tokens = 2000, model } = options;
 
     const response = await fetch(this.config.baseUrl!, {
-      method: 'POST',
+      method: "POST",
       headers: {
         Authorization: `Bearer ${this.config.apiKey}`,
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         model: model || this.config.model,
@@ -186,11 +197,15 @@ export class OpenRouterClient {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({})) as { error?: { message?: string } };
-      throw new Error(error.error?.message || `API request failed: ${response.status}`);
+      const error = (await response.json().catch(() => ({}))) as {
+        error?: { message?: string };
+      };
+      throw new Error(
+        error.error?.message || `API request failed: ${response.status}`,
+      );
     }
 
-    const data = await response.json() as {
+    const data = (await response.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
       model?: string;
       usage?: AIUsage;
@@ -201,9 +216,11 @@ export class OpenRouterClient {
 
     if (!content) {
       if (data.error) {
-        throw new Error(`API error: ${data.error.message || JSON.stringify(data.error)}`);
+        throw new Error(
+          `API error: ${data.error.message || JSON.stringify(data.error)}`,
+        );
       }
-      throw new Error('Empty response from AI model');
+      throw new Error("Empty response from AI model");
     }
 
     return {
@@ -219,30 +236,33 @@ export class OpenRouterClient {
   async assessFitScore(
     vacancy: Vacancy,
     resume: Resume,
-    promptBuilder: (vars: Record<string, unknown>) => Promise<BuiltPrompt>
+    promptBuilder: (vars: Record<string, unknown>) => Promise<BuiltPrompt>,
   ): Promise<FitAssessmentResult> {
     const prompt = await promptBuilder({
       vacancy: {
         name: vacancy.name,
         company: vacancy.company,
-        keySkills: vacancy.keySkills?.join(', ') || 'Not specified',
-        experience: vacancy.experience || 'Not specified',
+        keySkills: vacancy.keySkills?.join(", ") || "Not specified",
+        experience: vacancy.experience || "Not specified",
         description: stripHtml(vacancy.description).substring(0, 2000),
       },
       resume: {
         title: resume.title,
-        skills: resume.skills?.join(', ') || 'Not specified',
+        skills: resume.skills?.join(", ") || "Not specified",
         experience: formatExperience(resume.experience),
       },
     });
 
     const response = await this.call({
-      messages: [{ role: 'user', content: prompt.user }],
+      messages: [{ role: "user", content: prompt.user }],
       temperature: prompt.temperature,
       max_tokens: prompt.max_tokens,
     });
 
-    const result = parseJsonResponse<FitAssessment>(response.content, 'fit assessment');
+    const result = parseJsonResponse<FitAssessment>(
+      response.content,
+      "fit assessment",
+    );
 
     return {
       success: true,
@@ -261,10 +281,10 @@ export class OpenRouterClient {
     promptBuilder: (vars: Record<string, unknown>) => Promise<BuiltPrompt>,
     fitAssessment: FitAssessment | null = null,
     aggressiveness: number | null = null,
-    settings?: Settings
+    settings?: Settings,
   ): Promise<PersonalizedResumeResult> {
     if (!baseResume || !baseResume.experience?.length) {
-      throw new Error('Base resume with experience not configured.');
+      throw new Error("Base resume with experience not configured.");
     }
 
     const effectiveAggressiveness =
@@ -277,38 +297,41 @@ export class OpenRouterClient {
     const fitSection = fitAssessment
       ? `
 FIT ASSESSMENT:
-fitScore: ${fitAssessment.fitScore?.toFixed(2) || 'N/A'}
-Gaps: ${fitAssessment.gaps?.join(', ') || 'None identified'}
-Strengths: ${fitAssessment.strengths?.join(', ') || 'None identified'}`
-      : '';
+fitScore: ${fitAssessment.fitScore?.toFixed(2) || "N/A"}
+Gaps: ${fitAssessment.gaps?.join(", ") || "None identified"}
+Strengths: ${fitAssessment.strengths?.join(", ") || "None identified"}`
+      : "";
 
     const focusInstructions = fitAssessment
       ? ` Focus on:
-- Highlighting: ${fitAssessment.strengths?.join(', ') || 'relevant experience'}
-- Addressing gaps: ${fitAssessment.gaps?.join(', ') || 'none'}`
-      : '';
+- Highlighting: ${fitAssessment.strengths?.join(", ") || "relevant experience"}
+- Addressing gaps: ${fitAssessment.gaps?.join(", ") || "none"}`
+      : "";
 
     const prompt = await promptBuilder({
       vacancy: {
         name: vacancy.name,
         company: vacancy.company,
-        keySkills: vacancy.keySkills?.join(', ') || 'Not specified',
-        experience: vacancy.experience || 'Not specified',
+        keySkills: vacancy.keySkills?.join(", ") || "Not specified",
+        experience: vacancy.experience || "Not specified",
         description: stripHtml(vacancy.description).substring(0, 2500),
       },
       resume: {
         fullName: baseResume.fullName,
         title: baseResume.title,
-        skills: baseResume.skills?.join(', ') || 'Not specified',
-        experienceFormatted: formatExperienceForPersonalization(baseResume.experience),
+        skills: baseResume.skills?.join(", ") || "Not specified",
+        experienceFormatted: formatExperienceForPersonalization(
+          baseResume.experience,
+        ),
       },
       fitSection,
       aggressiveness: effectiveAggressiveness.toFixed(2),
       focusInstructions,
+      adaptJobTitles: settings?.adaptJobTitles ?? false,
     });
 
     const response = await this.call({
-      messages: [{ role: 'user', content: prompt.user }],
+      messages: [{ role: "user", content: prompt.user }],
       temperature: prompt.temperature,
       max_tokens: prompt.max_tokens,
     });
@@ -318,7 +341,7 @@ Strengths: ${fitAssessment.strengths?.join(', ') || 'None identified'}`
       summary?: string;
       experience?: Experience[];
       keySkills?: string[];
-    }>(response.content, 'generated resume');
+    }>(response.content, "generated resume");
 
     return {
       success: true,
@@ -340,34 +363,41 @@ Strengths: ${fitAssessment.strengths?.join(', ') || 'None identified'}`
     vacancy: Vacancy,
     baseResume: Resume,
     promptBuilder: (vars: Record<string, unknown>) => Promise<BuiltPrompt>,
-    personalizedResume?: { title?: string; keySkills?: string[]; experience?: Experience[] } | null,
+    personalizedResume?: {
+      title?: string;
+      keySkills?: string[];
+      experience?: Experience[];
+    } | null,
     fitAssessment?: FitAssessment | null,
     aggressiveness = 0.5,
-    settings?: Settings
+    settings?: Settings,
   ): Promise<CoverLetterResult> {
-    const contactTelegram = settings?.contactTelegram || baseResume.contacts?.telegram || '';
-    const contactEmail = settings?.contactEmail || baseResume.contacts?.email || '';
-    const contacts = [contactTelegram, contactEmail].filter(Boolean).join(', ');
+    const contactTelegram =
+      settings?.contactTelegram || baseResume.contacts?.telegram || "";
+    const contactEmail =
+      settings?.contactEmail || baseResume.contacts?.email || "";
+    const contacts = [contactTelegram, contactEmail].filter(Boolean).join(", ");
 
     const fitSection = fitAssessment
       ? `
 FIT ASSESSMENT:
-fitScore: ${fitAssessment.fitScore?.toFixed(2) || 'N/A'}
-Strengths: ${fitAssessment.strengths?.join(', ') || 'None identified'}
-Gaps: ${fitAssessment.gaps?.join(', ') || 'None identified'}`
-      : '';
+fitScore: ${fitAssessment.fitScore?.toFixed(2) || "N/A"}
+Strengths: ${fitAssessment.strengths?.join(", ") || "None identified"}
+Gaps: ${fitAssessment.gaps?.join(", ") || "None identified"}`
+      : "";
 
     const strategySection = `
 STRATEGY:
 - Present candidate as ideal fit for this role
-- Mention experience with key required skills: ${vacancy.keySkills?.slice(0, 4).join(', ') || 'required technologies'}
+- Mention experience with key required skills: ${vacancy.keySkills?.slice(0, 4).join(", ") || "required technologies"}
 - Be confident and specific`;
 
     const strengthsHint = fitAssessment?.strengths
-      ? ` from: ${fitAssessment.strengths.join(', ')}`
-      : '';
+      ? ` from: ${fitAssessment.strengths.join(", ")}`
+      : "";
 
-    const personalizedExperienceFormatted = personalizedResume?.experience?.length
+    const personalizedExperienceFormatted = personalizedResume?.experience
+      ?.length
       ? formatExperienceForCoverLetter(personalizedResume.experience)
       : formatExperience(baseResume.experience);
 
@@ -375,20 +405,21 @@ STRATEGY:
       ? personalizedResume.keySkills
       : baseResume.skills || [];
 
-    const personalizedTitle = personalizedResume?.title || baseResume.title || '';
+    const personalizedTitle =
+      personalizedResume?.title || baseResume.title || "";
 
     const prompt = await promptBuilder({
       vacancy: {
         name: vacancy.name,
         company: vacancy.company,
         description: stripHtml(vacancy.description).substring(0, 2000),
-        keySkills: vacancy.keySkills?.join(', ') || 'Not specified',
+        keySkills: vacancy.keySkills?.join(", ") || "Not specified",
       },
       resume: {
         fullName: baseResume.fullName,
         title: personalizedTitle,
         experience: personalizedExperienceFormatted,
-        skills: personalizedSkills.join(', ') || 'Not specified',
+        skills: personalizedSkills.join(", ") || "Not specified",
       },
       personalized: {
         title: personalizedTitle,
@@ -398,13 +429,13 @@ STRATEGY:
       aggressiveness: aggressiveness.toFixed(2),
       fitSection,
       contacts,
-      salaryExpectation: settings?.salaryExpectation || 'negotiable',
+      salaryExpectation: settings?.salaryExpectation || "negotiable",
       strategySection,
       strengthsHint,
     });
 
     const response = await this.call({
-      messages: [{ role: 'user', content: prompt.user }],
+      messages: [{ role: "user", content: prompt.user }],
       temperature: prompt.temperature,
       max_tokens: prompt.max_tokens,
     });
@@ -413,14 +444,20 @@ STRATEGY:
     let extraction: unknown = null;
 
     try {
-      const parsed = JSON.parse(response.content) as { cover_letter?: string; extraction?: unknown };
+      const parsed = JSON.parse(response.content) as {
+        cover_letter?: string;
+        extraction?: unknown;
+      };
       coverLetter = parsed.cover_letter || response.content;
       extraction = parsed.extraction;
     } catch {
       const jsonMatch = response.content.match(/```(?:json)?\s*([\s\S]*?)```/);
       if (jsonMatch) {
         try {
-          const parsed = JSON.parse(jsonMatch[1].trim()) as { cover_letter?: string; extraction?: unknown };
+          const parsed = JSON.parse(jsonMatch[1].trim()) as {
+            cover_letter?: string;
+            extraction?: unknown;
+          };
           coverLetter = parsed.cover_letter || response.content;
           extraction = parsed.extraction;
         } catch {
@@ -445,17 +482,20 @@ STRATEGY:
    */
   async parseResumePDF(
     pdfText: string,
-    promptBuilder: (vars: Record<string, unknown>) => Promise<BuiltPrompt>
+    promptBuilder: (vars: Record<string, unknown>) => Promise<BuiltPrompt>,
   ): Promise<ParsedResumeResult> {
     const prompt = await promptBuilder({ pdfText });
 
     const response = await this.call({
-      messages: [{ role: 'user', content: prompt.user }],
+      messages: [{ role: "user", content: prompt.user }],
       temperature: prompt.temperature,
       max_tokens: prompt.max_tokens,
     });
 
-    const result = parseJsonResponse<Resume>(response.content, 'resume parsing');
+    const result = parseJsonResponse<Resume>(
+      response.content,
+      "resume parsing",
+    );
 
     return {
       success: true,
@@ -470,10 +510,12 @@ STRATEGY:
    */
   async parseUniversalVacancy(
     rawText: string,
-    promptBuilder: (vars: Record<string, unknown>) => Promise<BuiltPrompt>
+    promptBuilder: (vars: Record<string, unknown>) => Promise<BuiltPrompt>,
   ): Promise<ParsedVacancyResult> {
     if (!rawText || rawText.trim().length < 20) {
-      throw new Error('Job description is too short. Please paste a complete job description.');
+      throw new Error(
+        "Job description is too short. Please paste a complete job description.",
+      );
     }
 
     const prompt = await promptBuilder({
@@ -481,21 +523,24 @@ STRATEGY:
     });
 
     const response = await this.call({
-      messages: [{ role: 'user', content: prompt.user }],
+      messages: [{ role: "user", content: prompt.user }],
       temperature: prompt.temperature,
       max_tokens: prompt.max_tokens,
     });
 
-    const result = parseJsonResponse<Partial<Vacancy>>(response.content, 'parsed vacancy');
+    const result = parseJsonResponse<Partial<Vacancy>>(
+      response.content,
+      "parsed vacancy",
+    );
 
     return {
       success: true,
       vacancy: {
-        name: result.name || 'Job Position',
-        company: result.company || 'Not specified',
+        name: result.name || "Job Position",
+        company: result.company || "Not specified",
         description: result.description || rawText.substring(0, 2000),
         keySkills: result.keySkills || [],
-        experience: result.experience || 'Not specified',
+        experience: result.experience || "Not specified",
         salary: result.salary || null,
       },
       model: response.model,
@@ -509,27 +554,38 @@ STRATEGY:
   async generateResumeTitle(
     vacancy: Vacancy,
     personalizedResume: { keySkills?: string[]; experience?: Experience[] },
-    promptBuilder: (vars: Record<string, unknown>) => Promise<BuiltPrompt>
-  ): Promise<{ success: boolean; title: string; model?: string; usage?: AIUsage }> {
+    promptBuilder: (vars: Record<string, unknown>) => Promise<BuiltPrompt>,
+  ): Promise<{
+    success: boolean;
+    title: string;
+    model?: string;
+    usage?: AIUsage;
+  }> {
     const prompt = await promptBuilder({
       vacancy: {
         name: vacancy.name,
         company: vacancy.company,
       },
       resume: {
-        keySkills: personalizedResume.keySkills?.slice(0, 5).join(', ') || 'Not specified',
-        recentPosition: personalizedResume.experience?.[0]?.position || 'Not specified',
-        recentCompany: personalizedResume.experience?.[0]?.companyName || '',
+        keySkills:
+          personalizedResume.keySkills?.slice(0, 5).join(", ") ||
+          "Not specified",
+        recentPosition:
+          personalizedResume.experience?.[0]?.position || "Not specified",
+        recentCompany: personalizedResume.experience?.[0]?.companyName || "",
       },
     });
 
     const response = await this.call({
-      messages: [{ role: 'user', content: prompt.user }],
+      messages: [{ role: "user", content: prompt.user }],
       temperature: prompt.temperature,
       max_tokens: prompt.max_tokens,
     });
 
-    const title = response.content.trim().replace(/^["']|["']$/g, '').trim();
+    const title = response.content
+      .trim()
+      .replace(/^["']|["']$/g, "")
+      .trim();
 
     return {
       success: true,

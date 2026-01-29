@@ -308,6 +308,22 @@
   margin-top: 0.375rem;
 }
 
+/* Checkbox */
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
 @keyframes slideUp {
   from {
     opacity: 0;

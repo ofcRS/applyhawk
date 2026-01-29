@@ -2,47 +2,48 @@
  * Storage module exports
  */
 
-export { STORAGE_KEYS } from './types';
-export type { StorageAdapter, StorageKey } from './types';
-export { WebStorageAdapter, createWebStorage } from './web';
-export { ExtensionStorageAdapter, createExtensionStorage } from './extension';
+export { STORAGE_KEYS } from "./types";
+export type { StorageAdapter, StorageKey } from "./types";
+export { WebStorageAdapter, createWebStorage } from "./web";
+export { ExtensionStorageAdapter, createExtensionStorage } from "./extension";
 
-import type { StorageAdapter } from './types';
-import { STORAGE_KEYS } from './types';
-import type { Resume, Settings } from '../types';
+import type { Resume, Settings } from "../types";
+import type { StorageAdapter } from "./types";
+import { STORAGE_KEYS } from "./types";
 
 /**
  * Default settings
  */
 export const DEFAULT_SETTINGS: Settings = {
-  openRouterApiKey: '',
-  preferredModel: 'anthropic/claude-sonnet-4',
-  defaultHHResumeId: '',
-  coverLetterTemplate: '',
-  contactEmail: '',
-  contactTelegram: '',
+  openRouterApiKey: "",
+  preferredModel: "anthropic/claude-sonnet-4",
+  defaultHHResumeId: "",
+  coverLetterTemplate: "",
+  contactEmail: "",
+  contactTelegram: "",
   aggressiveFit: {
     enabled: true,
     minFitScore: 0.15,
     maxAggressiveness: 0.95,
     aggressivenessOverride: null,
   },
+  adaptJobTitles: false,
 };
 
 /**
  * Default empty resume
  */
 export const DEFAULT_RESUME: Resume = {
-  fullName: '',
-  title: '',
-  summary: '',
+  fullName: "",
+  title: "",
+  summary: "",
   experience: [],
   education: [],
   skills: [],
   contacts: {
-    email: '',
-    phone: '',
-    telegram: '',
+    email: "",
+    phone: "",
+    telegram: "",
   },
 };
 
@@ -54,25 +55,38 @@ export async function getSettings(storage: StorageAdapter): Promise<Settings> {
   return { ...DEFAULT_SETTINGS, ...settings };
 }
 
-export async function saveSettings(storage: StorageAdapter, settings: Partial<Settings>): Promise<void> {
+export async function saveSettings(
+  storage: StorageAdapter,
+  settings: Partial<Settings>,
+): Promise<void> {
   const current = await getSettings(storage);
   await storage.set(STORAGE_KEYS.SETTINGS, { ...current, ...settings });
 }
 
-export async function getBaseResume(storage: StorageAdapter): Promise<Resume | null> {
+export async function getBaseResume(
+  storage: StorageAdapter,
+): Promise<Resume | null> {
   return storage.get<Resume>(STORAGE_KEYS.BASE_RESUME);
 }
 
-export async function saveBaseResume(storage: StorageAdapter, resume: Partial<Resume>): Promise<void> {
+export async function saveBaseResume(
+  storage: StorageAdapter,
+  resume: Partial<Resume>,
+): Promise<void> {
   await storage.set(STORAGE_KEYS.BASE_RESUME, { ...DEFAULT_RESUME, ...resume });
 }
 
-export async function getAppliedVacancies(storage: StorageAdapter): Promise<string[]> {
+export async function getAppliedVacancies(
+  storage: StorageAdapter,
+): Promise<string[]> {
   const applied = await storage.get<string[]>(STORAGE_KEYS.APPLIED_VACANCIES);
   return applied ?? [];
 }
 
-export async function markVacancyAsApplied(storage: StorageAdapter, vacancyId: string): Promise<void> {
+export async function markVacancyAsApplied(
+  storage: StorageAdapter,
+  vacancyId: string,
+): Promise<void> {
   const applied = await getAppliedVacancies(storage);
   if (!applied.includes(vacancyId)) {
     applied.push(vacancyId);
@@ -80,7 +94,10 @@ export async function markVacancyAsApplied(storage: StorageAdapter, vacancyId: s
   }
 }
 
-export async function isVacancyApplied(storage: StorageAdapter, vacancyId: string): Promise<boolean> {
+export async function isVacancyApplied(
+  storage: StorageAdapter,
+  vacancyId: string,
+): Promise<boolean> {
   const applied = await getAppliedVacancies(storage);
   return applied.includes(vacancyId);
 }
@@ -90,9 +107,11 @@ interface DailyCounter {
   count: number;
 }
 
-export async function getDailyCounter(storage: StorageAdapter): Promise<DailyCounter> {
+export async function getDailyCounter(
+  storage: StorageAdapter,
+): Promise<DailyCounter> {
   const counter = await storage.get<DailyCounter>(STORAGE_KEYS.DAILY_COUNTER);
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split("T")[0];
 
   if (!counter || counter.date !== today) {
     return { date: today, count: 0 };
@@ -101,14 +120,18 @@ export async function getDailyCounter(storage: StorageAdapter): Promise<DailyCou
   return counter;
 }
 
-export async function incrementDailyCounter(storage: StorageAdapter): Promise<DailyCounter> {
+export async function incrementDailyCounter(
+  storage: StorageAdapter,
+): Promise<DailyCounter> {
   const counter = await getDailyCounter(storage);
   counter.count += 1;
   await storage.set(STORAGE_KEYS.DAILY_COUNTER, counter);
   return counter;
 }
 
-export async function getRemainingApplications(storage: StorageAdapter): Promise<number> {
+export async function getRemainingApplications(
+  storage: StorageAdapter,
+): Promise<number> {
   const counter = await getDailyCounter(storage);
   return Math.max(0, 200 - counter.count);
 }

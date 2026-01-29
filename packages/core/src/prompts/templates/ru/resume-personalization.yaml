@@ -76,10 +76,15 @@ user: |
   - At aggressiveness 0.9+: Replace ALL tech stack mentions with required technologies
 
   POSITION TITLES:
+  {{#if adaptJobTitles}}
   - Adapt each position title to be relevant to the target vacancy
   - Keep titles distinct and appropriate for each company/role
   - Make titles sound natural and professional
   - Example: If applying for "Мойщик вагонов", adapt "Frontend Developer" → "Специалист по техническому обслуживанию" or similar relevant title
+  {{else}}
+  - KEEP ORIGINAL position titles exactly as provided - DO NOT CHANGE
+  - Only descriptions/bullets can be modified, not the position field
+  {{/if}}
 
   REQUIRED TECHNOLOGIES EXTRACTION:
   From the vacancy, identify these required technologies: {{vacancy.keySkills}}
@@ -99,7 +104,7 @@ user: |
     "experience": [
       {
         "companyName": "exact company name - DO NOT CHANGE",
-        "position": "adapted position relevant to vacancy",
+        "position": "{{#if adaptJobTitles}}adapted position relevant to vacancy{{else}}EXACT original position - DO NOT CHANGE{{/if}}",
         "startDate": "YYYY-MM-DD",
         "endDate": "YYYY-MM-DD or null if current",
         "description": "- Bullet in VACANCY LANGUAGE with REQUIRED TECH\n- Another bullet in VACANCY LANGUAGE\n- Third bullet in VACANCY LANGUAGE"
