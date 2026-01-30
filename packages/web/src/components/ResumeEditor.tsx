@@ -7,6 +7,17 @@ import styles from "./ResumeEditor.module.css";
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.4.149/pdf.worker.min.mjs";
 
+function normalizeToMonth(dateStr: string | null | undefined): string {
+  if (!dateStr) return "";
+  if (/^\d{4}-\d{2}$/.test(dateStr)) return dateStr;
+  if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) return dateStr.substring(0, 7);
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  }
+  return "";
+}
+
 interface ResumeEditorProps {
   resume: Resume | null;
   onSave: (resume: Partial<Resume>) => Promise<void>;
@@ -406,7 +417,7 @@ export default function ResumeEditor({
                 <input
                   type="month"
                   className="input"
-                  value={exp.startDate?.substring(0, 7) || ""}
+                  value={normalizeToMonth(exp.startDate)}
                   onChange={(e) =>
                     handleExperienceChange(index, "startDate", e.target.value)
                   }
@@ -417,7 +428,7 @@ export default function ResumeEditor({
                 <input
                   type="month"
                   className="input"
-                  value={exp.endDate?.substring(0, 7) || ""}
+                  value={normalizeToMonth(exp.endDate)}
                   onChange={(e) =>
                     handleExperienceChange(index, "endDate", e.target.value)
                   }

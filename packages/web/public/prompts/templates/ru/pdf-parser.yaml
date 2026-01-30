@@ -20,8 +20,8 @@ user: |
       {
         "company": "Company name",
         "position": "Job title",
-        "startDate": "YYYY-MM-DD format (e.g., 2023-01-15)",
-        "endDate": "YYYY-MM-DD format or null if current job (e.g., 2024-06-30)",
+        "startDate": "YYYY-MM format (e.g., 2023-01)",
+        "endDate": "YYYY-MM format or null if current job (e.g., 2024-06)",
         "description": "Job description and responsibilities",
         "achievements": ["Achievement 1", "Achievement 2"]
       }
@@ -44,7 +44,7 @@ user: |
 
   REQUIREMENTS:
   1. Extract ALL work experience entries in chronological order (most recent first)
-  2. Parse dates carefully - convert "Feb 2025" to "2025-02-01", "Present" to null
+  2. Parse dates carefully - convert "Feb 2025" to "2025-02", "Present" to null
   3. Skills should be individual items, not grouped
   4. If a field is not found in the resume, use empty string or empty array
   5. For achievements, extract quantifiable results if mentioned in the job description

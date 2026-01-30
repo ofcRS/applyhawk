@@ -4,9 +4,10 @@
  */
 
 import * as pdfjsLib from "pdfjs-dist";
+import { WorkerMessageHandler } from "pdfjs-dist/build/pdf.worker.min.mjs";
 
-// Configure PDF.js worker (relative to options.html)
-pdfjsLib.GlobalWorkerOptions.workerSrc = "./pdf.worker.min.mjs";
+// Run PDF.js worker on main thread to avoid MV3 CSP issues with dynamic import()
+globalThis.pdfjsWorker = { WorkerMessageHandler };
 
 // ═══════════════════════════════════════════════════════════════════════════
 // State
@@ -314,6 +315,17 @@ async function resetAll() {
 // Experience Management
 // ═══════════════════════════════════════════════════════════════════════════
 
+function normalizeToMonth(dateStr) {
+  if (!dateStr) return "";
+  if (/^\d{4}-\d{2}$/.test(dateStr)) return dateStr;
+  if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) return dateStr.substring(0, 7);
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  }
+  return "";
+}
+
 function addExperienceItem(data = null) {
   experienceCount++;
   const template = experienceTemplate.content.cloneNode(true);
@@ -336,8 +348,8 @@ function addExperienceItem(data = null) {
 
     if (companyEl) companyEl.value = data.company || "";
     if (positionEl) positionEl.value = data.position || "";
-    if (startEl) startEl.value = data.startDate || "";
-    if (endEl) endEl.value = data.endDate || "";
+    if (startEl) startEl.value = normalizeToMonth(data.startDate);
+    if (endEl) endEl.value = normalizeToMonth(data.endDate);
     if (descEl) descEl.value = data.description || "";
     if (achievementsEl)
       achievementsEl.value = data.achievements?.join("\n") || "";

@@ -92,8 +92,8 @@ user: |
       {
         "companyName": "exact company name - DO NOT CHANGE",
         "position": "adapted position relevant to vacancy",
-        "startDate": "YYYY-MM-DD",
-        "endDate": "YYYY-MM-DD or null if current",
+        "startDate": "YYYY-MM",
+        "endDate": "YYYY-MM or null if current",
         "description": "- Bullet with REQUIRED TECH and metrics\n- Another bullet with achievement\n- Third bullet with impact"
       }
     ],

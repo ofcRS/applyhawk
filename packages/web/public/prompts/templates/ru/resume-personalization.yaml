@@ -100,8 +100,8 @@ user: |
       {
         "companyName": "exact company name - DO NOT CHANGE",
         "position": "adapted position relevant to vacancy",
-        "startDate": "YYYY-MM-DD",
-        "endDate": "YYYY-MM-DD or null if current",
+        "startDate": "YYYY-MM",
+        "endDate": "YYYY-MM or null if current",
         "description": "- Bullet in VACANCY LANGUAGE with REQUIRED TECH\n- Another bullet in VACANCY LANGUAGE\n- Third bullet in VACANCY LANGUAGE"
       }
     ],

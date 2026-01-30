@@ -22,8 +22,8 @@ user: |
       {
         "company": "Company Name",
         "position": "Job Title",
-        "startDate": "YYYY-MM-DD or YYYY-MM",
-        "endDate": "YYYY-MM-DD or YYYY-MM or null if current",
+        "startDate": "YYYY-MM",
+        "endDate": "YYYY-MM or null if current",
         "description": "Job responsibilities and achievements",
         "achievements": ["achievement 1", "achievement 2"]
       }
@@ -47,7 +47,7 @@ user: |
   PARSING RULES:
   - Extract all available information
   - Use null for missing optional fields
-  - Normalize dates to YYYY-MM-DD where possible
+  - Normalize dates to YYYY-MM format (e.g., "2023-01" not "2023-01-15")
   - Split skills into individual items
   - Preserve original language of the resume
   - If dates are ambiguous, make reasonable assumptions
