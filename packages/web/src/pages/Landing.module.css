@@ -61,7 +61,11 @@
 /* Hero */
 .hero {
   padding: 8rem 0 4rem;
-  background: linear-gradient(180deg, var(--color-bg-secondary) 0%, var(--color-bg) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--color-bg-secondary) 0%,
+    var(--color-bg) 100%
+  );
 }
 
 .heroContent {

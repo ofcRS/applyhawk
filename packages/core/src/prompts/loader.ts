@@ -4,8 +4,8 @@
  * Works with both web (fetch from URL) and extension (chrome.runtime.getURL)
  */
 
-import yaml from 'js-yaml';
-import type { BuiltPrompt, Language, PromptTemplate } from '../types';
+import yaml from "js-yaml";
+import type { BuiltPrompt, Language, PromptTemplate } from "../types";
 
 // Cache for loaded prompts
 const promptCache = new Map<string, PromptTemplate>();
@@ -17,13 +17,16 @@ const promptCache = new Map<string, PromptTemplate>();
  * @param variables - Object with variable values
  * @returns Interpolated string
  */
-export function interpolate(template: string | undefined, variables: Record<string, unknown>): string {
-  if (!template) return '';
+export function interpolate(
+  template: string | undefined,
+  variables: Record<string, unknown>,
+): string {
+  if (!template) return "";
 
   return template.replace(/\{\{([^}]+)\}\}/g, (_match, path: string) => {
     // Handle nested paths like "vacancy.name"
-    const value = path.split('.').reduce<unknown>((obj, key) => {
-      if (obj && typeof obj === 'object') {
+    const value = path.split(".").reduce<unknown>((obj, key) => {
+      if (obj && typeof obj === "object") {
         return (obj as Record<string, unknown>)[key.trim()];
       }
       return undefined;
@@ -31,12 +34,12 @@ export function interpolate(template: string | undefined, variables: Record<stri
 
     // Return empty string for undefined/null, otherwise convert to string
     if (value === undefined || value === null) {
-      return '';
+      return "";
     }
 
     // Handle arrays
     if (Array.isArray(value)) {
-      return value.join(', ');
+      return value.join(", ");
     }
 
     return String(value);
@@ -69,7 +72,11 @@ export interface PromptLoaderConfig {
  * Create a prompt loader with configuration
  */
 export function createPromptLoader(config: PromptLoaderConfig) {
-  const { baseUrl, defaultLanguage = 'en', useLanguageSubdirs = false } = config;
+  const {
+    baseUrl,
+    defaultLanguage = "en",
+    useLanguageSubdirs = false,
+  } = config;
 
   /**
    * Get the URL for a prompt file
@@ -88,13 +95,18 @@ export function createPromptLoader(config: PromptLoaderConfig) {
    * Get cache key for a prompt
    */
   function getCacheKey(promptName: string, language?: Language): string {
-    return useLanguageSubdirs ? `${language || defaultLanguage}:${promptName}` : promptName;
+    return useLanguageSubdirs
+      ? `${language || defaultLanguage}:${promptName}`
+      : promptName;
   }
 
   /**
    * Load a prompt template from YAML file
    */
-  async function loadPrompt(promptName: string, language?: Language): Promise<PromptTemplate> {
+  async function loadPrompt(
+    promptName: string,
+    language?: Language,
+  ): Promise<PromptTemplate> {
     const cacheKey = getCacheKey(promptName, language);
 
     // Check cache first
@@ -128,7 +140,7 @@ export function createPromptLoader(config: PromptLoaderConfig) {
   async function buildPromptFromTemplate(
     promptName: string,
     variables: Record<string, unknown>,
-    language?: Language
+    language?: Language,
   ): Promise<BuiltPrompt> {
     const template = await loadPrompt(promptName, language);
 
@@ -158,4 +170,4 @@ export function createPromptLoader(config: PromptLoaderConfig) {
 /**
  * Export types for prompt building
  */
-export type { BuiltPrompt, PromptTemplate } from '../types';
+export type { BuiltPrompt, PromptTemplate } from "../types";

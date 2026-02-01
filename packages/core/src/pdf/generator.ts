@@ -4,9 +4,22 @@
  * Works with both web and extension by accepting font URLs as configuration
  */
 
-import fontkit from '@pdf-lib/fontkit';
-import { PDFDocument, PDFName, PDFString, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
-import type { Experience, PersonalizedResume, Resume, PDFGeneratorConfig } from '../types';
+import fontkit from "@pdf-lib/fontkit";
+import {
+  PDFDocument,
+  type PDFFont,
+  PDFName,
+  type PDFPage,
+  PDFString,
+  StandardFonts,
+  rgb,
+} from "pdf-lib";
+import type {
+  Experience,
+  PDFGeneratorConfig,
+  PersonalizedResume,
+  Resume,
+} from "../types";
 
 // A4 page dimensions in points (72 points = 1 inch)
 const PAGE_WIDTH = 595;
@@ -31,7 +44,7 @@ const SIZES = {
 };
 
 const LINE_HEIGHT = 1.4;
-const BULLET = '•';
+const BULLET = "•";
 
 interface Fonts {
   regular: PDFFont;
@@ -41,7 +54,10 @@ interface Fonts {
 /**
  * Load fonts for PDF generation
  */
-async function loadFonts(pdfDoc: PDFDocument, config?: PDFGeneratorConfig): Promise<Fonts> {
+async function loadFonts(
+  pdfDoc: PDFDocument,
+  config?: PDFGeneratorConfig,
+): Promise<Fonts> {
   pdfDoc.registerFontkit(fontkit);
 
   if (config?.fontUrls) {
@@ -56,7 +72,10 @@ async function loadFonts(pdfDoc: PDFDocument, config?: PDFGeneratorConfig): Prom
 
       return { regular, bold };
     } catch (error) {
-      console.warn('[PDF Generator] Failed to load custom fonts, falling back to Times Roman:', error);
+      console.warn(
+        "[PDF Generator] Failed to load custom fonts, falling back to Times Roman:",
+        error,
+      );
     }
   }
 
@@ -76,19 +95,24 @@ function drawCenteredText(
   y: number,
   font: PDFFont,
   fontSize: number,
-  color: ReturnType<typeof rgb>
+  color: ReturnType<typeof rgb>,
 ): void {
   const textWidth = getTextWidth(text, font, fontSize);
   const x = (PAGE_WIDTH - textWidth) / 2;
   page.drawText(text, { x, y, size: fontSize, font, color });
 }
 
-function wrapText(text: string, font: PDFFont, fontSize: number, maxWidth: number): string[] {
+function wrapText(
+  text: string,
+  font: PDFFont,
+  fontSize: number,
+  maxWidth: number,
+): string[] {
   if (!text) return [];
 
   const words = text.split(/\s+/);
   const lines: string[] = [];
-  let currentLine = '';
+  let currentLine = "";
 
   for (const word of words) {
     const testLine = currentLine ? `${currentLine} ${word}` : word;
@@ -117,7 +141,7 @@ function drawWrappedText(
   font: PDFFont,
   fontSize: number,
   maxWidth: number,
-  color: ReturnType<typeof rgb>
+  color: ReturnType<typeof rgb>,
 ): number {
   const lines = wrapText(text, font, fontSize, maxWidth);
   let currentY = y;
@@ -138,7 +162,7 @@ function drawJustifiedText(
   font: PDFFont,
   fontSize: number,
   maxWidth: number,
-  color: ReturnType<typeof rgb>
+  color: ReturnType<typeof rgb>,
 ): number {
   const lines = wrapText(text, font, fontSize, maxWidth);
   let currentY = y;
@@ -150,7 +174,7 @@ function drawJustifiedText(
     if (isLastLine || line.trim().length === 0) {
       page.drawText(line, { x, y: currentY, size: fontSize, font, color });
     } else {
-      const words = line.split(' ').filter((w) => w.length > 0);
+      const words = line.split(" ").filter((w) => w.length > 0);
       if (words.length <= 1) {
         page.drawText(line, { x, y: currentY, size: fontSize, font, color });
       } else {
@@ -164,7 +188,13 @@ function drawJustifiedText(
 
         let xPos = x;
         for (let j = 0; j < words.length; j++) {
-          page.drawText(words[j], { x: xPos, y: currentY, size: fontSize, font, color });
+          page.drawText(words[j], {
+            x: xPos,
+            y: currentY,
+            size: fontSize,
+            font,
+            color,
+          });
           xPos += font.widthOfTextAtSize(words[j], fontSize);
           if (j < words.length - 1) {
             xPos += spaceWidth;
@@ -187,7 +217,12 @@ function drawDivider(page: PDFPage, y: number, thickness = 0.5): void {
   });
 }
 
-function drawSectionHeader(page: PDFPage, title: string, y: number, fonts: Fonts): number {
+function drawSectionHeader(
+  page: PDFPage,
+  title: string,
+  y: number,
+  fonts: Fonts,
+): number {
   page.drawText(title.toUpperCase(), {
     x: MARGIN,
     y,
@@ -203,11 +238,24 @@ function drawSectionHeader(page: PDFPage, title: string, y: number, fonts: Fonts
 }
 
 function formatDateShort(date: string | undefined): string {
-  if (!date) return 'Present';
+  if (!date) return "Present";
 
   try {
     const d = new Date(date);
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
     const year = d.getFullYear().toString().slice(-2);
     return `${months[d.getMonth()]} '${year}`;
   } catch {
@@ -220,13 +268,13 @@ function parseBulletPoints(description: string | undefined): string[] {
 
   let points = description
     .split(/[\n\r]+/)
-    .map((line) => line.replace(/^[\s]*[•\-\*][\s]+/, '').trim())
+    .map((line) => line.replace(/^[\s]*[•\-\*][\s]+/, "").trim())
     .filter((s) => s.length > 0);
 
   if (points.length === 1 && points[0].length > 100) {
     points = points[0]
       .split(/\.\s+(?=[A-ZА-ЯЁ])/)
-      .map((s) => s.trim().replace(/\.$/, ''))
+      .map((s) => s.trim().replace(/\.$/, ""))
       .filter((s) => s.length > 0);
   }
 
@@ -249,7 +297,7 @@ function drawBulletPoints(
   font: PDFFont,
   fontSize: number,
   maxWidth: number,
-  color: ReturnType<typeof rgb>
+  color: ReturnType<typeof rgb>,
 ): number {
   const bulletIndent = 15;
   let currentY = y;
@@ -263,11 +311,23 @@ function drawBulletPoints(
       const isLastLine = i === lines.length - 1;
 
       if (isLastLine || line.trim().length === 0) {
-        page.drawText(line, { x: x + bulletIndent, y: currentY, size: fontSize, font, color });
+        page.drawText(line, {
+          x: x + bulletIndent,
+          y: currentY,
+          size: fontSize,
+          font,
+          color,
+        });
       } else {
-        const words = line.split(' ').filter((w) => w.length > 0);
+        const words = line.split(" ").filter((w) => w.length > 0);
         if (words.length <= 1) {
-          page.drawText(line, { x: x + bulletIndent, y: currentY, size: fontSize, font, color });
+          page.drawText(line, {
+            x: x + bulletIndent,
+            y: currentY,
+            size: fontSize,
+            font,
+            color,
+          });
         } else {
           let wordsWidth = 0;
           for (const word of words) {
@@ -278,7 +338,13 @@ function drawBulletPoints(
 
           let xPos = x + bulletIndent;
           for (let j = 0; j < words.length; j++) {
-            page.drawText(words[j], { x: xPos, y: currentY, size: fontSize, font, color });
+            page.drawText(words[j], {
+              x: xPos,
+              y: currentY,
+              size: fontSize,
+              font,
+              color,
+            });
             xPos += font.widthOfTextAtSize(words[j], fontSize);
             if (j < words.length - 1) {
               xPos += spaceWidth;
@@ -295,16 +361,16 @@ function drawBulletPoints(
 
 function getContactUrl(type: string, value: string): string {
   switch (type) {
-    case 'email':
+    case "email":
       return `mailto:${value}`;
-    case 'phone':
-      return `tel:${value.replace(/[^\d+]/g, '')}`;
-    case 'linkedin':
-      if (value.startsWith('http')) return value;
-      return `https://linkedin.com/in/${value.replace(/^@/, '')}`;
-    case 'telegram':
-      if (value.startsWith('http')) return value;
-      return `https://t.me/${value.replace(/^@/, '')}`;
+    case "phone":
+      return `tel:${value.replace(/[^\d+]/g, "")}`;
+    case "linkedin":
+      if (value.startsWith("http")) return value;
+      return `https://linkedin.com/in/${value.replace(/^@/, "")}`;
+    case "telegram":
+      if (value.startsWith("http")) return value;
+      return `https://t.me/${value.replace(/^@/, "")}`;
     default:
       return value;
   }
@@ -319,7 +385,7 @@ function drawTextWithLink(
   font: PDFFont,
   fontSize: number,
   color: ReturnType<typeof rgb>,
-  url: string
+  url: string,
 ): number {
   page.drawText(text, { x, y, size: fontSize, font, color });
 
@@ -327,22 +393,30 @@ function drawTextWithLink(
   const textHeight = fontSize;
 
   const linkAnnotation = pdfDoc.context.obj({
-    Type: PDFName.of('Annot'),
-    Subtype: PDFName.of('Link'),
+    Type: PDFName.of("Annot"),
+    Subtype: PDFName.of("Link"),
     Rect: [x, y - 2, x + textWidth, y + textHeight],
     Border: [0, 0, 0],
     A: {
-      Type: PDFName.of('Action'),
-      S: PDFName.of('URI'),
+      Type: PDFName.of("Action"),
+      S: PDFName.of("URI"),
       URI: PDFString.of(url),
     },
   });
 
-  const annots = page.node.get(PDFName.of('Annots'));
-  if (annots && typeof (annots as unknown as { push?: unknown }).push === 'function') {
-    (annots as unknown as { push: (ref: unknown) => void }).push(pdfDoc.context.register(linkAnnotation));
+  const annots = page.node.get(PDFName.of("Annots"));
+  if (
+    annots &&
+    typeof (annots as unknown as { push?: unknown }).push === "function"
+  ) {
+    (annots as unknown as { push: (ref: unknown) => void }).push(
+      pdfDoc.context.register(linkAnnotation),
+    );
   } else {
-    page.node.set(PDFName.of('Annots'), pdfDoc.context.obj([pdfDoc.context.register(linkAnnotation)]));
+    page.node.set(
+      PDFName.of("Annots"),
+      pdfDoc.context.obj([pdfDoc.context.register(linkAnnotation)]),
+    );
   }
 
   return textWidth;
@@ -354,7 +428,7 @@ function drawTextWithLink(
 export async function generatePdfResume(
   personalizedResume: PersonalizedResume | null,
   baseResume: Resume,
-  config?: PDFGeneratorConfig
+  config?: PDFGeneratorConfig,
 ): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
   const fonts = await loadFonts(pdfDoc, config);
@@ -363,32 +437,44 @@ export async function generatePdfResume(
   let y = PAGE_HEIGHT - MARGIN;
 
   // Header: Name
-  const fullName = (baseResume.fullName || 'Name Not Specified').toUpperCase();
+  const fullName = (baseResume.fullName || "Name Not Specified").toUpperCase();
   drawCenteredText(page, fullName, y, fonts.bold, SIZES.name, COLORS.text);
   y -= SIZES.name + 10;
 
   // Contacts
   const contactItems: Array<{ type: string; value: string }> = [];
   if (baseResume.contacts?.email) {
-    contactItems.push({ type: 'email', value: baseResume.contacts.email });
+    contactItems.push({ type: "email", value: baseResume.contacts.email });
   }
   if (baseResume.contacts?.phone) {
-    contactItems.push({ type: 'phone', value: baseResume.contacts.phone });
+    contactItems.push({ type: "phone", value: baseResume.contacts.phone });
   }
   if (baseResume.contacts?.linkedin) {
-    contactItems.push({ type: 'linkedin', value: baseResume.contacts.linkedin });
+    contactItems.push({
+      type: "linkedin",
+      value: baseResume.contacts.linkedin,
+    });
   }
   if (baseResume.contacts?.telegram) {
-    contactItems.push({ type: 'telegram', value: baseResume.contacts.telegram });
+    contactItems.push({
+      type: "telegram",
+      value: baseResume.contacts.telegram,
+    });
   }
 
   if (contactItems.length > 0) {
-    const separator = '  |  ';
-    const separatorWidth = fonts.regular.widthOfTextAtSize(separator, SIZES.small);
+    const separator = "  |  ";
+    const separatorWidth = fonts.regular.widthOfTextAtSize(
+      separator,
+      SIZES.small,
+    );
 
     let totalWidth = 0;
     for (let i = 0; i < contactItems.length; i++) {
-      totalWidth += fonts.regular.widthOfTextAtSize(contactItems[i].value, SIZES.small);
+      totalWidth += fonts.regular.widthOfTextAtSize(
+        contactItems[i].value,
+        SIZES.small,
+      );
       if (i < contactItems.length - 1) {
         totalWidth += separatorWidth;
       }
@@ -409,7 +495,7 @@ export async function generatePdfResume(
         fonts.regular,
         SIZES.small,
         COLORS.secondary,
-        url
+        url,
       );
       xPos += textWidth;
 
@@ -431,24 +517,43 @@ export async function generatePdfResume(
   // Profile (Summary)
   const summary = personalizedResume?.summary || baseResume.summary;
   if (summary) {
-    y = drawSectionHeader(page, 'Profile', y, fonts);
-    y = drawJustifiedText(page, summary, MARGIN, y, fonts.regular, SIZES.body, CONTENT_WIDTH, COLORS.text);
+    y = drawSectionHeader(page, "Profile", y, fonts);
+    y = drawJustifiedText(
+      page,
+      summary,
+      MARGIN,
+      y,
+      fonts.regular,
+      SIZES.body,
+      CONTENT_WIDTH,
+      COLORS.text,
+    );
     y -= 20;
   }
 
   // Key Skills
   const skills = personalizedResume?.keySkills || baseResume.skills || [];
   if (skills.length > 0) {
-    y = drawSectionHeader(page, 'Key Skills', y, fonts);
-    const skillsText = skills.join(', ');
-    y = drawWrappedText(page, skillsText, MARGIN, y, fonts.regular, SIZES.body, CONTENT_WIDTH, COLORS.text);
+    y = drawSectionHeader(page, "Key Skills", y, fonts);
+    const skillsText = skills.join(", ");
+    y = drawWrappedText(
+      page,
+      skillsText,
+      MARGIN,
+      y,
+      fonts.regular,
+      SIZES.body,
+      CONTENT_WIDTH,
+      COLORS.text,
+    );
     y -= 20;
   }
 
   // Career History
-  const experience: Experience[] = personalizedResume?.experience || baseResume.experience || [];
+  const experience: Experience[] =
+    personalizedResume?.experience || baseResume.experience || [];
   if (experience.length > 0) {
-    y = drawSectionHeader(page, 'Career History', y, fonts);
+    y = drawSectionHeader(page, "Career History", y, fonts);
 
     for (const exp of experience) {
       if (y < 120) {
@@ -457,13 +562,17 @@ export async function generatePdfResume(
       }
 
       const startDate = formatDateShort(exp.startDate);
-      const endDate = exp.endDate ? formatDateShort(exp.endDate) : 'Present';
-      const company = exp.companyName || exp.company || 'Company';
-      const position = exp.position || 'Position';
-      const companyDesc = exp.companyDescription || '';
+      const endDate = exp.endDate ? formatDateShort(exp.endDate) : "Present";
+      const company = exp.companyName || exp.company || "Company";
+      const position = exp.position || "Position";
+      const companyDesc = exp.companyDescription || "";
 
       const headerLine = `${startDate} – ${endDate}: `;
-      const headerLineWidth = getTextWidth(headerLine, fonts.regular, SIZES.body);
+      const headerLineWidth = getTextWidth(
+        headerLine,
+        fonts.regular,
+        SIZES.body,
+      );
 
       page.drawText(headerLine, {
         x: MARGIN,
@@ -496,7 +605,7 @@ export async function generatePdfResume(
         xOffset += getTextWidth(descText, fonts.regular, SIZES.body);
       }
 
-      const separatorText = '– ';
+      const separatorText = "– ";
       page.drawText(separatorText, {
         x: xOffset,
         y,
@@ -519,7 +628,16 @@ export async function generatePdfResume(
       if (exp.description) {
         const bulletPoints = parseBulletPoints(exp.description);
         if (bulletPoints.length > 0) {
-          y = drawBulletPoints(page, bulletPoints, MARGIN, y, fonts.regular, SIZES.body, CONTENT_WIDTH, COLORS.text);
+          y = drawBulletPoints(
+            page,
+            bulletPoints,
+            MARGIN,
+            y,
+            fonts.regular,
+            SIZES.body,
+            CONTENT_WIDTH,
+            COLORS.text,
+          );
         }
       }
 
@@ -539,14 +657,14 @@ export async function generatePdfResume(
     drawDivider(page, y, 0.5);
     y -= 15;
 
-    y = drawSectionHeader(page, 'Qualifications', y, fonts);
+    y = drawSectionHeader(page, "Qualifications", y, fonts);
 
     for (const edu of education) {
-      const institution = edu.institution || edu.name || 'Institution';
-      const degree = edu.degree || edu.faculty || '';
-      const year = edu.year || edu.graduationYear || '';
+      const institution = edu.institution || edu.name || "Institution";
+      const degree = edu.degree || edu.faculty || "";
+      const year = edu.year || edu.graduationYear || "";
 
-      let eduLine = '';
+      let eduLine = "";
       if (year) {
         eduLine = `${year} – `;
       }
@@ -561,7 +679,9 @@ export async function generatePdfResume(
         });
       }
 
-      const yearWidth = year ? getTextWidth(eduLine, fonts.regular, SIZES.body) : 0;
+      const yearWidth = year
+        ? getTextWidth(eduLine, fonts.regular, SIZES.body)
+        : 0;
 
       if (degree) {
         page.drawText(degree, {

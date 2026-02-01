@@ -3,49 +3,61 @@
  * Adds ApplyHawk button to detected job pages
  */
 
-import { detectJobPage, extractJobContent } from './detector.js';
+import { detectJobPage, extractJobContent } from "./detector.js";
 
 // Don't run on HH.ru - it has its own optimized integration
-if (window.location.hostname.includes('hh.ru')) {
-  console.log('[ApplyHawk] HH.ru detected, using dedicated integration');
+if (window.location.hostname.includes("hh.ru")) {
+  console.log("[ApplyHawk] HH.ru detected, using dedicated integration");
 } else {
   // Detect job page after DOM is ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
   } else {
     // Small delay to let dynamic content load
     setTimeout(init, 1000);
   }
+
+  // Handle SPA navigation (LinkedIn, etc.) - detect URL changes
+  let lastUrl = location.href;
+  const urlObserver = new MutationObserver(() => {
+    if (location.href !== lastUrl) {
+      lastUrl = location.href;
+      console.log("[ApplyHawk] URL changed, re-initializing...");
+      // Delay to let new content load
+      setTimeout(init, 1500);
+    }
+  });
+  urlObserver.observe(document.body, { subtree: true, childList: true });
 }
 
 function init() {
   const detection = detectJobPage();
 
   if (!detection.isJobPage || detection.confidence < 0.4) {
-    console.log('[ApplyHawk] Not a job page or low confidence:', detection);
+    console.log("[ApplyHawk] Not a job page or low confidence:", detection);
     return;
   }
 
-  console.log('[ApplyHawk] Job page detected:', detection);
+  console.log("[ApplyHawk] Job page detected:", detection);
   injectApplyHawkButton(detection);
 }
 
 function injectApplyHawkButton(detection) {
   // Check if button already exists
-  if (document.getElementById('applyhawk-button')) {
+  if (document.getElementById("applyhawk-button")) {
     return;
   }
 
   // Create floating button
-  const button = document.createElement('button');
-  button.id = 'applyhawk-button';
+  const button = document.createElement("button");
+  button.id = "applyhawk-button";
   button.innerHTML = `
     <span class="applyhawk-icon">🦅</span>
     <span class="applyhawk-text">ApplyHawk</span>
   `;
 
   // Add styles
-  const styles = document.createElement('style');
+  const styles = document.createElement("style");
   styles.textContent = `
     #applyhawk-button {
       position: fixed;
@@ -196,16 +208,16 @@ function injectApplyHawkButton(detection) {
   document.body.appendChild(button);
 
   // Handle click
-  button.addEventListener('click', async () => {
-    button.classList.add('applyhawk-loading');
-    button.querySelector('.applyhawk-text').textContent = 'Processing';
+  button.addEventListener("click", async () => {
+    button.classList.add("applyhawk-loading");
+    button.querySelector(".applyhawk-text").textContent = "Processing";
 
     try {
       const jobContent = extractJobContent();
 
       // Send to background script
       const response = await chrome.runtime.sendMessage({
-        type: 'UNIVERSAL_JOB_DETECTED',
+        type: "UNIVERSAL_JOB_DETECTED",
         payload: {
           ...jobContent,
           detection,
@@ -213,11 +225,19 @@ function injectApplyHawkButton(detection) {
       });
 
       if (response?.success) {
-        // Open side panel
-        chrome.runtime.sendMessage({ type: 'OPEN_SIDE_PANEL' });
+        if (!response.panelOpened) {
+          // Side panel couldn't be opened programmatically
+          showModal({
+            title: "Job Saved!",
+            content: `
+              <p style="margin-bottom: 12px;">Job details captured successfully.</p>
+              <p>Click the <strong>ApplyHawk extension icon</strong> in your toolbar to open the side panel and generate your resume.</p>
+            `,
+          });
+        }
       } else {
         showModal({
-          title: 'Configure ApplyHawk',
+          title: "Configure ApplyHawk",
           content: `
             <p style="margin-bottom: 16px;">To use ApplyHawk, please configure your settings:</p>
             <ol style="margin-left: 20px; margin-bottom: 16px;">
@@ -233,27 +253,27 @@ function injectApplyHawkButton(detection) {
         });
       }
     } catch (error) {
-      console.error('[ApplyHawk] Error:', error);
+      console.error("[ApplyHawk] Error:", error);
       showModal({
-        title: 'Error',
+        title: "Error",
         content: `<p style="color: #dc2626;">${error.message}</p>`,
       });
     } finally {
-      button.classList.remove('applyhawk-loading');
-      button.querySelector('.applyhawk-text').textContent = 'ApplyHawk';
+      button.classList.remove("applyhawk-loading");
+      button.querySelector(".applyhawk-text").textContent = "ApplyHawk";
     }
   });
 }
 
 function showModal({ title, content }) {
   // Remove existing modal
-  const existing = document.getElementById('applyhawk-modal');
+  const existing = document.getElementById("applyhawk-modal");
   if (existing) {
     existing.remove();
   }
 
-  const modal = document.createElement('div');
-  modal.id = 'applyhawk-modal';
+  const modal = document.createElement("div");
+  modal.id = "applyhawk-modal";
   modal.innerHTML = `
     <div id="applyhawk-modal-content">
       <div id="applyhawk-modal-header">
@@ -269,8 +289,10 @@ function showModal({ title, content }) {
   document.body.appendChild(modal);
 
   // Close handlers
-  modal.querySelector('#applyhawk-modal-close').addEventListener('click', () => modal.remove());
-  modal.addEventListener('click', (e) => {
+  modal
+    .querySelector("#applyhawk-modal-close")
+    .addEventListener("click", () => modal.remove());
+  modal.addEventListener("click", (e) => {
     if (e.target === modal) modal.remove();
   });
 }

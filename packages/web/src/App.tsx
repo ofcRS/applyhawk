@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import Landing from './pages/Landing';
-import AppPage from './pages/AppPage';
+import { useState } from "react";
+import AppPage from "./pages/AppPage";
+import Landing from "./pages/Landing";
 
 function App() {
   const [showApp, setShowApp] = useState(false);

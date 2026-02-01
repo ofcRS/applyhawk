@@ -1,14 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
 import {
+  DEFAULT_RESUME,
+  DEFAULT_SETTINGS,
   createWebStorage,
   getBaseResume,
-  saveBaseResume,
   getSettings,
+  saveBaseResume,
   saveSettings,
-  DEFAULT_SETTINGS,
-  DEFAULT_RESUME,
-} from '@applyhawk/core';
-import type { Resume, Settings } from '@applyhawk/core';
+} from "@applyhawk/core";
+import type { Resume, Settings } from "@applyhawk/core";
+import { useCallback, useEffect, useState } from "react";
 
 const storage = createWebStorage();
 
@@ -28,7 +28,7 @@ export function useStorage() {
         setResume(loadedResume || DEFAULT_RESUME);
         setSettings(loadedSettings);
       } catch (err) {
-        console.error('Failed to load data from storage:', err);
+        console.error("Failed to load data from storage:", err);
         setResume(DEFAULT_RESUME);
         setSettings(DEFAULT_SETTINGS);
       } finally {
@@ -38,17 +38,23 @@ export function useStorage() {
     loadData();
   }, []);
 
-  const updateResume = useCallback(async (newResume: Partial<Resume>) => {
-    const updated = { ...resume, ...newResume } as Resume;
-    setResume(updated);
-    await saveBaseResume(storage, updated);
-  }, [resume]);
+  const updateResume = useCallback(
+    async (newResume: Partial<Resume>) => {
+      const updated = { ...resume, ...newResume } as Resume;
+      setResume(updated);
+      await saveBaseResume(storage, updated);
+    },
+    [resume],
+  );
 
-  const updateSettings = useCallback(async (newSettings: Partial<Settings>) => {
-    const updated = { ...settings, ...newSettings };
-    setSettings(updated);
-    await saveSettings(storage, updated);
-  }, [settings]);
+  const updateSettings = useCallback(
+    async (newSettings: Partial<Settings>) => {
+      const updated = { ...settings, ...newSettings };
+      setSettings(updated);
+      await saveSettings(storage, updated);
+    },
+    [settings],
+  );
 
   const clearAllData = useCallback(async () => {
     await storage.clear();

@@ -166,6 +166,59 @@ const coreHandlers = {
   },
 
   EXPORT_CAPTURED_REQUESTS: async () => await exportCapturedRequests(),
+
+  // Universal job detection handlers
+  UNIVERSAL_JOB_DETECTED: async (message, sender) => {
+    const { payload } = message;
+
+    // Validate settings before storing
+    const settings = await getSettings();
+    if (!settings.openRouterApiKey) {
+      return {
+        success: false,
+        error: "API key not configured",
+        needsSetup: true,
+      };
+    }
+
+    const baseResume = await getBaseResume();
+    if (!baseResume || !baseResume.fullName) {
+      return {
+        success: false,
+        error: "Base resume not configured",
+        needsSetup: true,
+      };
+    }
+
+    // Store vacancy data with timestamp for TTL
+    await chrome.storage.local.set({
+      detectedVacancy: {
+        ...payload,
+        timestamp: Date.now(),
+        tabId: sender.tab?.id,
+      },
+    });
+
+    console.log("[MessageRouter] Vacancy stored:", {
+      title: payload.title,
+      platform: payload.detection?.platform,
+      url: payload.url,
+    });
+
+    // Open side panel in same handler to preserve user gesture context
+    let panelOpened = false;
+    try {
+      const windowId = sender.tab?.windowId;
+      if (windowId) {
+        await chrome.sidePanel.open({ windowId });
+        panelOpened = true;
+      }
+    } catch (error) {
+      console.error("[MessageRouter] Failed to open side panel:", error);
+    }
+
+    return { success: true, panelOpened };
+  },
 };
 
 /**

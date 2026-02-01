@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
-import { detectLanguage, getLanguageName } from '@applyhawk/core';
-import type { Vacancy } from '@applyhawk/core';
-import styles from './JobInput.module.css';
+import { detectLanguage, getLanguageName } from "@applyhawk/core";
+import type { Vacancy } from "@applyhawk/core";
+import { useCallback, useState } from "react";
+import styles from "./JobInput.module.css";
 
 interface JobInputProps {
   apiKey: string;
@@ -11,31 +11,41 @@ interface JobInputProps {
   error: string | null;
 }
 
-export default function JobInput({ apiKey, onSubmit, onBack, isLoading, error }: JobInputProps) {
-  const [jobText, setJobText] = useState('');
+export default function JobInput({
+  apiKey,
+  onSubmit,
+  onBack,
+  isLoading,
+  error,
+}: JobInputProps) {
+  const [jobText, setJobText] = useState("");
   const detectedLanguage = jobText.length > 50 ? detectLanguage(jobText) : null;
 
   const handleSubmit = useCallback(async () => {
     if (!jobText.trim()) return;
 
     // Simple parsing for demo - in production, this would call the AI
-    const lines = jobText.split('\n').filter(l => l.trim());
-    const title = lines[0] || 'Job Position';
+    const lines = jobText.split("\n").filter((l) => l.trim());
+    const title = lines[0] || "Job Position";
 
     // Extract skills by looking for common patterns
-    const skillPatterns = /(?:skills?|technologies?|stack|requirements?|требовани[яе]|навыки|стек)[\s:]*(.+)/gi;
+    const skillPatterns =
+      /(?:skills?|technologies?|stack|requirements?|требовани[яе]|навыки|стек)[\s:]*(.+)/gi;
     const skillMatches = [...jobText.matchAll(skillPatterns)];
-    const skills = skillMatches.flatMap(m =>
-      m[1].split(/[,;•\-]/).map(s => s.trim()).filter(s => s.length > 1 && s.length < 50)
+    const skills = skillMatches.flatMap((m) =>
+      m[1]
+        .split(/[,;•\-]/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 1 && s.length < 50),
     );
 
     // Create basic vacancy structure
     const vacancy: Vacancy = {
       name: title.substring(0, 100),
-      company: 'Company', // Would be extracted by AI
+      company: "Company", // Would be extracted by AI
       description: jobText,
       keySkills: skills.slice(0, 15),
-      experience: 'Not specified',
+      experience: "Not specified",
     };
 
     await onSubmit(vacancy);
@@ -47,8 +57,8 @@ export default function JobInput({ apiKey, onSubmit, onBack, isLoading, error }:
     <div className={styles.container}>
       <h2>Paste Job Description</h2>
       <p className={styles.subtitle}>
-        Copy the job posting you want to apply for and paste it below.
-        AI will analyze it and personalize your resume.
+        Copy the job posting you want to apply for and paste it below. AI will
+        analyze it and personalize your resume.
       </p>
 
       {isApiKeyMissing && (
@@ -56,7 +66,10 @@ export default function JobInput({ apiKey, onSubmit, onBack, isLoading, error }:
           <span>⚠️</span>
           <div>
             <strong>API Key Required</strong>
-            <p>Please configure your OpenRouter API key in Settings to use AI features.</p>
+            <p>
+              Please configure your OpenRouter API key in Settings to use AI
+              features.
+            </p>
           </div>
         </div>
       )}
@@ -119,7 +132,7 @@ Requirements:
               Generating...
             </>
           ) : (
-            'Generate Personalized Resume →'
+            "Generate Personalized Resume →"
           )}
         </button>
       </div>

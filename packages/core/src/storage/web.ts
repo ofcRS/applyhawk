@@ -3,9 +3,9 @@
  * For use in the web application (applyhawk.top)
  */
 
-import type { StorageAdapter } from './types';
+import type { StorageAdapter } from "./types";
 
-const STORAGE_PREFIX = 'applyhawk_';
+const STORAGE_PREFIX = "applyhawk_";
 
 export class WebStorageAdapter implements StorageAdapter {
   private prefix: string;
@@ -44,7 +44,7 @@ export class WebStorageAdapter implements StorageAdapter {
         keysToRemove.push(key);
       }
     }
-    keysToRemove.forEach(key => localStorage.removeItem(key));
+    keysToRemove.forEach((key) => localStorage.removeItem(key));
   }
 }
 

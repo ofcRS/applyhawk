@@ -3,7 +3,7 @@
  * Detects whether text is primarily Russian or English
  */
 
-import type { Language } from '../types';
+import type { Language } from "../types";
 
 // Cyrillic character range: U+0400 to U+04FF
 const CYRILLIC_REGEX = /[\u0400-\u04FF]/g;
@@ -16,7 +16,7 @@ const CYRILLIC_REGEX = /[\u0400-\u04FF]/g;
  */
 export function detectLanguage(text: string, threshold = 0.3): Language {
   if (!text || text.trim().length === 0) {
-    return 'en';
+    return "en";
   }
 
   // Count Cyrillic characters
@@ -29,7 +29,7 @@ export function detectLanguage(text: string, threshold = 0.3): Language {
 
   const cyrillicRatio = cyrillicCount / letterCount;
 
-  return cyrillicRatio >= threshold ? 'ru' : 'en';
+  return cyrillicRatio >= threshold ? "ru" : "en";
 }
 
 /**
@@ -43,5 +43,5 @@ export function containsCyrillic(text: string): boolean {
  * Get language name for display
  */
 export function getLanguageName(lang: Language): string {
-  return lang === 'ru' ? 'Russian' : 'English';
+  return lang === "ru" ? "Russian" : "English";
 }

@@ -64,7 +64,13 @@ const universalBuild = esbuild.build({
   outfile: join(outDir, "platforms", "universal", "content-script.js"),
 });
 
-await Promise.all([backgroundBuild, contentBuild, injectorBuild, optionsBuild, universalBuild]);
+await Promise.all([
+  backgroundBuild,
+  contentBuild,
+  injectorBuild,
+  optionsBuild,
+  universalBuild,
+]);
 
 // Copy static files
 copyFileSync("manifest.json", join(outDir, "manifest.json"));
@@ -95,15 +101,6 @@ if (existsSync("src/ui/options/options.css")) {
   copyFileSync(
     "src/ui/options/options.css",
     join(outDir, "ui", "options", "options.css"),
-  );
-}
-
-// Copy PDF.js worker for options page PDF import
-const pdfWorkerSrc = "../../node_modules/pdfjs-dist/build/pdf.worker.min.mjs";
-if (existsSync(pdfWorkerSrc)) {
-  copyFileSync(
-    pdfWorkerSrc,
-    join(outDir, "ui", "options", "pdf.worker.min.mjs"),
   );
 }
 

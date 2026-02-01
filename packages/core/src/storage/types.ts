@@ -11,10 +11,10 @@ export interface StorageAdapter {
 }
 
 export const STORAGE_KEYS = {
-  BASE_RESUME: 'baseResume',
-  SETTINGS: 'settings',
-  APPLIED_VACANCIES: 'appliedVacancies',
-  DAILY_COUNTER: 'dailyCounter',
+  BASE_RESUME: "baseResume",
+  SETTINGS: "settings",
+  APPLIED_VACANCIES: "appliedVacancies",
+  DAILY_COUNTER: "dailyCounter",
 } as const;
 
-export type StorageKey = typeof STORAGE_KEYS[keyof typeof STORAGE_KEYS];
+export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];

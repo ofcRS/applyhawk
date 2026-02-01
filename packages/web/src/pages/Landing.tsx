@@ -1,4 +1,4 @@
-import styles from './Landing.module.css';
+import styles from "./Landing.module.css";
 
 interface LandingProps {
   onGetStarted: () => void;
@@ -31,13 +31,14 @@ export default function Landing({ onGetStarted }: LandingProps) {
         <div className="container">
           <div className={styles.heroContent}>
             <h1 className={styles.heroTitle}>
-              Your Resume,{' '}
-              <span className={styles.heroTitleHighlight}>Personalized</span>{' '}
+              Your Resume,{" "}
+              <span className={styles.heroTitleHighlight}>Personalized</span>{" "}
               for Every Job
             </h1>
             <p className={styles.heroSubtitle}>
-              AI-powered resume optimization that rewrites your experience to match each
-              job description. Get more interviews with tailored applications.
+              AI-powered resume optimization that rewrites your experience to
+              match each job description. Get more interviews with tailored
+              applications.
             </p>
             <div className={styles.heroCta}>
               <button className="btn btn-primary btn-lg" onClick={onGetStarted}>
@@ -60,32 +61,33 @@ export default function Landing({ onGetStarted }: LandingProps) {
               <div className={styles.featureIcon}>🎯</div>
               <h3>Targeted Personalization</h3>
               <p>
-                AI rewrites your experience descriptions using the exact terminology from
-                each job posting. Same achievements, better framing.
+                AI rewrites your experience descriptions using the exact
+                terminology from each job posting. Same achievements, better
+                framing.
               </p>
             </div>
             <div className={styles.featureCard}>
               <div className={styles.featureIcon}>📝</div>
               <h3>Cover Letters That Work</h3>
               <p>
-                Generate professional cover letters that highlight your most relevant
-                experience. No more generic templates.
+                Generate professional cover letters that highlight your most
+                relevant experience. No more generic templates.
               </p>
             </div>
             <div className={styles.featureCard}>
               <div className={styles.featureIcon}>📄</div>
               <h3>PDF Export</h3>
               <p>
-                Download your personalized resume as a professionally formatted PDF.
-                Ready to submit.
+                Download your personalized resume as a professionally formatted
+                PDF. Ready to submit.
               </p>
             </div>
             <div className={styles.featureCard}>
               <div className={styles.featureIcon}>🔒</div>
               <h3>Privacy First</h3>
               <p>
-                Your data stays on your device. We don't store your resume or job
-                applications. Bring your own API key.
+                Your data stays on your device. We don't store your resume or
+                job applications. Bring your own API key.
               </p>
             </div>
           </div>
@@ -100,19 +102,28 @@ export default function Landing({ onGetStarted }: LandingProps) {
             <div className={styles.step}>
               <div className={styles.stepNumber}>1</div>
               <h3>Enter Your Resume</h3>
-              <p>Fill in your experience, skills, and education once. Or import from PDF.</p>
+              <p>
+                Fill in your experience, skills, and education once. Or import
+                from PDF.
+              </p>
             </div>
             <div className={styles.stepArrow}>→</div>
             <div className={styles.step}>
               <div className={styles.stepNumber}>2</div>
               <h3>Paste Job Description</h3>
-              <p>Copy any job posting and paste it. AI detects language automatically.</p>
+              <p>
+                Copy any job posting and paste it. AI detects language
+                automatically.
+              </p>
             </div>
             <div className={styles.stepArrow}>→</div>
             <div className={styles.step}>
               <div className={styles.stepNumber}>3</div>
               <h3>Get Personalized Content</h3>
-              <p>AI rewrites your resume and generates a cover letter. Download or copy.</p>
+              <p>
+                AI rewrites your resume and generates a cover letter. Download
+                or copy.
+              </p>
             </div>
           </div>
         </div>

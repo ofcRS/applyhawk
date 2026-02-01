@@ -157,6 +157,7 @@ async function init() {
   // Load data
   await loadSettings();
   await loadResearchMode();
+  await loadDetectedVacancy();
   await checkHHAuthStatus();
   await loadHHResumes();
   await loadModels();
@@ -178,6 +179,59 @@ function switchTab(tabId) {
   document.querySelectorAll(".tab-content").forEach((content) => {
     content.classList.toggle("active", content.id === `tab-${tabId}`);
   });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Detected Vacancy Loading
+// ═══════════════════════════════════════════════════════════════════════════
+
+const VACANCY_TTL_MS = 60000; // 1 minute
+
+async function loadDetectedVacancy() {
+  try {
+    const result = await chrome.storage.local.get("detectedVacancy");
+    const vacancy = result.detectedVacancy;
+
+    if (!vacancy) {
+      return;
+    }
+
+    // Check TTL - vacancy must be recent (within 1 minute)
+    const age = Date.now() - (vacancy.timestamp || 0);
+    if (age > VACANCY_TTL_MS) {
+      console.log("[Panel] Detected vacancy expired, clearing");
+      await chrome.storage.local.remove("detectedVacancy");
+      return;
+    }
+
+    // Pre-fill job description input
+    if (vacancy.content && elements.jobDescriptionInput) {
+      elements.jobDescriptionInput.value = vacancy.content;
+      console.log(
+        "[Panel] Auto-filled job description from detected vacancy:",
+        {
+          title: vacancy.title,
+          platform: vacancy.detection?.platform,
+          contentLength: vacancy.content.length,
+        },
+      );
+
+      // Switch to Resume tab if not already there
+      switchTab("resume");
+
+      // Show toast notification
+      const platform = vacancy.detection?.platform || "job page";
+      const title = vacancy.title
+        ? ` "${vacancy.title.substring(0, 40)}${vacancy.title.length > 40 ? "..." : ""}"`
+        : "";
+      showToast(`Loaded${title} from ${platform}`, "success");
+    }
+
+    // Clear stored vacancy after loading
+    await chrome.storage.local.remove("detectedVacancy");
+  } catch (error) {
+    console.error("[Panel] Failed to load detected vacancy:", error);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

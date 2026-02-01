@@ -3,7 +3,7 @@
  * Uses chrome.storage.local for persistent storage
  */
 
-import type { StorageAdapter } from './types';
+import type { StorageAdapter } from "./types";
 
 declare const chrome: {
   storage: {
