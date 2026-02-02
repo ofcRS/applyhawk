@@ -737,6 +737,190 @@ export async function parseUniversalVacancy(rawText) {
 }
 
 /**
+ * Generate suggested values for ATS application form fields
+ *
+ * @param {Array} formFields - Extracted form fields from the page
+ * @param {Object} baseResume - User's base resume data
+ * @param {string} jobDescription - Job description text
+ * @param {string} coverLetter - Generated cover letter (optional)
+ * @returns {Object} - { success, fields: [{ selector, label, suggestedValue, confidence, note }] }
+ */
+export async function generateFormFillAnswers(
+  formFields,
+  baseResume,
+  jobDescription = "",
+  coverLetter = "",
+) {
+  const settings = await getSettings();
+
+  if (!settings.openRouterApiKey) {
+    throw new Error(
+      "OpenRouter API key not configured. Please set it in Options.",
+    );
+  }
+
+  if (!baseResume || !baseResume.fullName) {
+    throw new Error(
+      "Base resume not configured. Please fill in your resume in Options.",
+    );
+  }
+
+  // Format experience for the prompt
+  const experienceFormatted = baseResume.experience?.length
+    ? baseResume.experience
+        .map((exp) => {
+          const period = exp.endDate
+            ? `${exp.startDate} - ${exp.endDate}`
+            : `${exp.startDate} - present`;
+          return `${exp.position} at ${exp.company} (${period})\n${exp.description || ""}`;
+        })
+        .join("\n\n")
+    : "Not specified";
+
+  // Format education
+  const educationFormatted = baseResume.education?.length
+    ? baseResume.education
+        .map((edu) => `${edu.degree || edu.level || ""} - ${edu.institution || edu.name || ""} (${edu.year || edu.endDate || ""})`)
+        .join("\n")
+    : "Not specified";
+
+  // Simplify form fields for the prompt (reduce token usage)
+  const simplifiedFields = formFields.map((f) => ({
+    selector: f.selector,
+    label: f.label || f.name || f.placeholder || "",
+    type: f.type,
+    required: f.required,
+    options: f.options?.slice(0, 20) || null,
+    placeholder: f.placeholder || null,
+  }));
+
+  const promptTemplate = await buildPromptFromTemplate("form-fill", {
+    candidate: {
+      fullName: baseResume.fullName || "",
+      email: baseResume.contacts?.email || settings.contactEmail || "",
+      phone: baseResume.contacts?.phone || "",
+      linkedin: baseResume.contacts?.linkedin || "",
+      title: baseResume.title || "",
+      summary: baseResume.summary || "",
+      skills: baseResume.skills?.join(", ") || "Not specified",
+      experience: experienceFormatted,
+      education: educationFormatted,
+    },
+    jobDescription: jobDescription.substring(0, 3000) || "Not provided",
+    coverLetter: coverLetter || "Not generated yet",
+    formFieldsJson: JSON.stringify(simplifiedFields, null, 2),
+  });
+
+  const data = await callOpenRouter({
+    apiKey: settings.openRouterApiKey,
+    model: settings.preferredModel,
+    messages: [{ role: "user", content: promptTemplate.user }],
+    temperature: promptTemplate.temperature,
+    max_tokens: promptTemplate.max_tokens,
+  });
+
+  const content = extractContent(data, "form fill");
+  const result = parseJsonResponse(content, "form fill answers");
+
+  // Ensure result is an array
+  const fields = Array.isArray(result) ? result : result.fields || [];
+
+  return {
+    success: true,
+    fields,
+    model: data.model,
+    usage: data.usage,
+  };
+}
+
+/**
+ * Analyze page HTML to identify form fields and generate fill values
+ *
+ * @param {string} pageHtml - Cleaned HTML of the page
+ * @param {Object} baseResume - User's base resume data
+ * @param {string} jobDescription - Job description text
+ * @param {string} coverLetter - Generated cover letter (optional)
+ * @returns {Object} - { success, fields: [{ selector, label, type, suggestedValue, confidence, note }] }
+ */
+export async function generateFormFillFromHtml(
+  pageHtml,
+  baseResume,
+  jobDescription = "",
+  coverLetter = "",
+) {
+  const settings = await getSettings();
+
+  if (!settings.openRouterApiKey) {
+    throw new Error(
+      "OpenRouter API key not configured. Please set it in Options.",
+    );
+  }
+
+  if (!baseResume || !baseResume.fullName) {
+    throw new Error(
+      "Base resume not configured. Please fill in your resume in Options.",
+    );
+  }
+
+  // Format experience for the prompt
+  const experienceFormatted = baseResume.experience?.length
+    ? baseResume.experience
+        .map((exp) => {
+          const period = exp.endDate
+            ? `${exp.startDate} - ${exp.endDate}`
+            : `${exp.startDate} - present`;
+          return `${exp.position} at ${exp.company} (${period})\n${exp.description || ""}`;
+        })
+        .join("\n\n")
+    : "Not specified";
+
+  // Format education
+  const educationFormatted = baseResume.education?.length
+    ? baseResume.education
+        .map((edu) => `${edu.degree || edu.level || ""} - ${edu.institution || edu.name || ""} (${edu.year || edu.endDate || ""})`)
+        .join("\n")
+    : "Not specified";
+
+  const promptTemplate = await buildPromptFromTemplate("form-fill-from-html", {
+    candidate: {
+      fullName: baseResume.fullName || "",
+      email: baseResume.contacts?.email || settings.contactEmail || "",
+      phone: baseResume.contacts?.phone || "",
+      linkedin: baseResume.contacts?.linkedin || "",
+      title: baseResume.title || "",
+      summary: baseResume.summary || "",
+      skills: baseResume.skills?.join(", ") || "Not specified",
+      experience: experienceFormatted,
+      education: educationFormatted,
+    },
+    jobDescription: jobDescription.substring(0, 3000) || "Not provided",
+    coverLetter: coverLetter || "Not generated yet",
+    pageHtml,
+  });
+
+  const data = await callOpenRouter({
+    apiKey: settings.openRouterApiKey,
+    model: settings.preferredModel,
+    messages: [{ role: "user", content: promptTemplate.user }],
+    temperature: promptTemplate.temperature,
+    max_tokens: promptTemplate.max_tokens,
+  });
+
+  const content = extractContent(data, "form fill from HTML");
+  const result = parseJsonResponse(content, "form fill from HTML");
+
+  // Ensure result is an array
+  const fields = Array.isArray(result) ? result : result.fields || [];
+
+  return {
+    success: true,
+    fields,
+    model: data.model,
+    usage: data.usage,
+  };
+}
+
+/**
  * Generate a professional, catchy resume title for HH.ru
  *
  * @param {Object} vacancy - Vacancy data

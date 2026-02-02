@@ -1,0 +1,80 @@
+name: form_fill_from_html
+description: Identify form fields from raw HTML and generate fill values using candidate data
+temperature: 0.2
+max_tokens: 4000
+
+system: |
+  You are an expert at analyzing HTML to find interactive form fields and filling them with candidate data. Output JSON only.
+
+user: |
+  CANDIDATE INFO:
+  Name: {{candidate.fullName}}
+  Email: {{candidate.email}}
+  Phone: {{candidate.phone}}
+  LinkedIn: {{candidate.linkedin}}
+  Title: {{candidate.title}}
+  Summary: {{candidate.summary}}
+  Skills: {{candidate.skills}}
+  Experience:
+  {{candidate.experience}}
+  Education:
+  {{candidate.education}}
+
+  JOB DESCRIPTION:
+  {{jobDescription}}
+
+  COVER LETTER (if available):
+  {{coverLetter}}
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  PAGE HTML:
+  {{pageHtml}}
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  TASK:
+  1. Analyze the HTML above and identify ALL interactive form fields (inputs, textareas, selects, contenteditable elements, custom dropdowns, radio groups, checkboxes).
+  2. For each field, generate a unique CSS selector that will work with document.querySelector().
+  3. Fill each field with the most appropriate value from the candidate data.
+
+  SELECTOR RULES (in priority order):
+  - Use #id if the element has an id attribute
+  - Use [name="..."] if the element has a name attribute
+  - Use [data-testid="..."] if available
+  - Use [aria-label="..."] or [placeholder="..."] as fallback
+  - As last resort, build a path selector like "form > div:nth-of-type(2) > input"
+  - Selectors MUST be unique on the page
+
+  FILL RULES:
+  1. For name/email/phone/LinkedIn fields → use candidate data directly (confidence: high)
+  2. For "cover letter" / "why this company" / "additional info" → use the COVER LETTER above (confidence: high)
+  3. For "years of experience" → calculate from candidate experience dates (confidence: high)
+  4. For salary/compensation fields → leave empty, set suggestedValue to null (confidence: low)
+  5. For select/dropdown fields → pick the best matching option VALUE from the visible options in the HTML (confidence: medium)
+  6. For radio fields → pick the best matching option value (confidence: medium)
+  7. For file upload fields → set suggestedValue to null (confidence: low, note: "Manual upload required")
+  8. For checkbox fields → set to true/false based on context (confidence: medium)
+  9. For questions about work authorization, visa status → set suggestedValue to null (confidence: low, note: "Please answer manually")
+  10. Match the LANGUAGE of the form (if form is in German, answer in German; if English, answer in English)
+  11. Keep answers concise and professional
+  12. For unknown/ambiguous fields → provide best guess with confidence: low
+  13. Skip hidden inputs, submit buttons, and CSRF tokens
+
+  OUTPUT FORMAT:
+  Return a JSON array of objects. One object per detected interactive field.
+
+  ```json
+  [
+    {
+      "selector": "unique CSS selector for the element",
+      "label": "human-readable label for this field",
+      "type": "text|email|tel|url|number|textarea|select|radio|checkbox|file|contenteditable",
+      "suggestedValue": "the value to fill (string, boolean for checkboxes, or null to skip)",
+      "confidence": "high|medium|low",
+      "note": "optional explanation or reason (null if not needed)"
+    }
+  ]
+  ```
+
+  OUTPUT: JSON array only, no other text.

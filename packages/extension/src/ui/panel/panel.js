@@ -29,17 +29,18 @@ let currentCategory = "recommended";
 let researchModeEnabled = false;
 let selectedResumeHash = null;
 let hhResumes = [];
-let currentTab = "resume";
+let currentTab = "generate";
+let lastJobDescription = "";
+let lastGeneratedCoverLetter = "";
+let lastFitAssessment = null;
+let extractedFormFields = null;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DOM Elements
 // ═══════════════════════════════════════════════════════════════════════════
 
 const elements = {
-  // Settings
-  settingsBtn: document.getElementById("settings-btn"),
-
-  // Resume Tab
+  // Generate Tab (merged Resume + Cover Letter)
   jobDescriptionInput: document.getElementById("job-description-input"),
   generatePdfBtn: document.getElementById("generate-pdf-btn"),
   resumeProgress: document.getElementById("resume-progress"),
@@ -48,14 +49,34 @@ const elements = {
   pdfAggressivenessValue: document.getElementById("pdf-aggressiveness-value"),
   aggressivenessInfoBtn: document.getElementById("aggressiveness-info-btn"),
   aggressivenessTooltip: document.getElementById("aggressiveness-tooltip"),
-
-  // Cover Letter Tab
-  coverJobDescription: document.getElementById("cover-job-description"),
   generateCoverBtn: document.getElementById("generate-cover-btn"),
   coverResult: document.getElementById("cover-result"),
   coverText: document.getElementById("cover-text"),
   copyCoverBtn: document.getElementById("copy-cover-btn"),
   coverError: document.getElementById("cover-error"),
+
+  // Fit Assessment
+  fitAssessmentSection: document.getElementById("fit-assessment-section"),
+  fitScorePercentage: document.getElementById("fit-score-percentage"),
+  fitScoreBar: document.getElementById("fit-score-bar"),
+  fitDetails: document.getElementById("fit-details"),
+  fitWarning: document.getElementById("fit-warning"),
+  fitCancelBtn: document.getElementById("fit-cancel-btn"),
+  fitProceedBtn: document.getElementById("fit-proceed-btn"),
+
+  // Form Fill Tab
+  formfillJobDescription: document.getElementById("formfill-job-description"),
+  extractFieldsBtn: document.getElementById("extract-fields-btn"),
+  aiAnalyzeBtn: document.getElementById("ai-analyze-btn"),
+  formfillFieldsPreview: document.getElementById("formfill-fields-preview"),
+  formfillFieldsCount: document.getElementById("formfill-fields-count"),
+  formfillFieldsList: document.getElementById("formfill-fields-list"),
+  generateAnswersBtn: document.getElementById("generate-answers-btn"),
+  formfillError: document.getElementById("formfill-error"),
+  formfillAnswers: document.getElementById("formfill-answers"),
+  formfillAnswersList: document.getElementById("formfill-answers-list"),
+  copyAllAnswersBtn: document.getElementById("copy-all-answers-btn"),
+  autofillBtn: document.getElementById("autofill-btn"),
 
   // Apply Tab - HH.ru
   hhAuthIcon: document.getElementById("hh-auth-icon"),
@@ -96,6 +117,10 @@ const elements = {
 
   // Toast
   toastContainer: document.getElementById("toast-container"),
+
+  // Permission Banner
+  permissionBanner: document.getElementById("permission-banner"),
+  permissionGrantBtn: document.getElementById("permission-grant-btn"),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -108,10 +133,7 @@ async function init() {
     tab.addEventListener("click", () => switchTab(tab.dataset.tab));
   });
 
-  // Settings button
-  elements.settingsBtn?.addEventListener("click", openOptionsPage);
-
-  // Resume Tab
+  // Generate Tab
   elements.generatePdfBtn?.addEventListener("click", handleGeneratePdf);
   elements.pdfAggressiveness?.addEventListener(
     "input",
@@ -121,13 +143,32 @@ async function init() {
     "click",
     toggleAggressivenessTooltip,
   );
-
-  // Cover Letter Tab
   elements.generateCoverBtn?.addEventListener(
     "click",
     handleGenerateCoverLetter,
   );
   elements.copyCoverBtn?.addEventListener("click", handleCopyCoverLetter);
+
+  // Form Fill Tab
+  elements.extractFieldsBtn?.addEventListener("click", handleExtractFields);
+  elements.aiAnalyzeBtn?.addEventListener("click", handleAiAnalyzePage);
+  elements.generateAnswersBtn?.addEventListener("click", handleGenerateAnswers);
+  elements.copyAllAnswersBtn?.addEventListener("click", handleCopyAllAnswers);
+  elements.autofillBtn?.addEventListener("click", handleAutofill);
+
+  // Listen for ATS form detection from background
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === "ATS_FORM_DETECTED") {
+      console.log("[Panel] ATS form detected:", message.url);
+      switchTab("formfill");
+      // Pre-fill job description if available from Generate tab
+      if (lastJobDescription && elements.formfillJobDescription) {
+        elements.formfillJobDescription.value = lastJobDescription;
+      }
+      // Auto-trigger field extraction
+      setTimeout(() => handleExtractFields(), 500);
+    }
+  });
 
   // Apply Tab
   elements.refreshResumesBtn?.addEventListener("click", () =>
@@ -154,6 +195,20 @@ async function init() {
   elements.toggleApiKey?.addEventListener("click", toggleApiKeyVisibility);
   elements.saveApiKeyBtn?.addEventListener("click", saveSettings);
 
+  // Permission banner — "Enable" button requests persistent host permission
+  elements.permissionGrantBtn?.addEventListener("click", handleGrantPermission);
+
+  // Listen for vacancy data changes (handles case when panel is already open)
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === "local" && changes.detectedVacancy?.newValue) {
+      console.log("[Panel] Detected vacancy change in storage");
+      loadDetectedVacancy();
+    }
+  });
+
+  // Check if current tab needs permission banner
+  await checkTabPermission();
+
   // Load data
   await loadSettings();
   await loadResearchMode();
@@ -179,6 +234,70 @@ function switchTab(tabId) {
   document.querySelectorAll(".tab-content").forEach((content) => {
     content.classList.toggle("active", content.id === `tab-${tabId}`);
   });
+
+  // Pre-fill form fill job description from Generate tab if available
+  if (tabId === "formfill" && lastJobDescription && elements.formfillJobDescription) {
+    if (!elements.formfillJobDescription.value.trim()) {
+      elements.formfillJobDescription.value = lastJobDescription;
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Host Permission Banner
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** URL of the current active tab (cached during permission check) */
+let currentTabUrl = null;
+
+async function checkTabPermission() {
+  try {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+    if (!tab?.url || !tab.url.startsWith("http")) return;
+
+    currentTabUrl = tab.url;
+
+    const result = await sendMessage({
+      type: "CHECK_HOST_PERMISSION",
+      url: tab.url,
+    });
+
+    if (result.success && !result.hasPermission && !result.isKnown) {
+      elements.permissionBanner?.classList.remove("hidden");
+    }
+  } catch (error) {
+    console.warn("[Panel] Permission check failed:", error);
+  }
+}
+
+async function handleGrantPermission() {
+  if (!currentTabUrl) return;
+
+  try {
+    // Build origin pattern from the current tab URL
+    const url = new URL(currentTabUrl);
+    const parts = url.hostname.split(".");
+    const domain = parts.length > 2 ? parts.slice(-2).join(".") : url.hostname;
+    const pattern = `${url.protocol}//*.${domain}/*`;
+
+    const granted = await chrome.permissions.request({ origins: [pattern] });
+
+    if (granted) {
+      elements.permissionBanner?.classList.add("hidden");
+      showToast("Permission granted — reloading page", "success");
+
+      // Inject content script on the active tab now
+      await sendMessage({ type: "INJECT_CONTENT_SCRIPT" });
+    } else {
+      showToast("Permission denied", "info");
+    }
+  } catch (error) {
+    console.error("[Panel] Permission request failed:", error);
+    showToast("Permission request failed: " + error.message, "error");
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -216,8 +335,8 @@ async function loadDetectedVacancy() {
         },
       );
 
-      // Switch to Resume tab if not already there
-      switchTab("resume");
+      // Switch to Generate tab if not already there
+      switchTab("generate");
 
       // Show toast notification
       const platform = vacancy.detection?.platform || "job page";
@@ -418,6 +537,9 @@ async function handleAggressivenessChange() {
   try {
     const settings = await getStoredSettings();
     settings.defaultAggressiveness = Number.parseInt(value, 10);
+    if (!settings.aggressiveFit) settings.aggressiveFit = {};
+    settings.aggressiveFit.aggressivenessOverride =
+      Number.parseInt(value, 10) / 100;
     await chrome.storage.local.set({ settings });
   } catch (error) {
     console.error("Failed to save aggressiveness:", error);
@@ -484,10 +606,55 @@ async function handleGeneratePdf() {
     });
     setProgressStep(elements.resumeProgress, "parse", "complete");
 
-    // Step 2: Personalize resume
-    setProgressStep(elements.resumeProgress, "personalize", "active");
-    const aggressiveness =
+    // Step 2: Assess fit score
+    setProgressStep(elements.resumeProgress, "assess", "active");
+    elements.fitAssessmentSection?.classList.add("hidden");
+    lastFitAssessment = null;
+
+    let aggressiveness =
       Number.parseInt(elements.pdfAggressiveness?.value || "50", 10) / 100;
+
+    try {
+      const fitResult = await sendMessage({
+        type: "ASSESS_FIT_SCORE",
+        vacancy: parsedVacancy,
+        resume: baseResume,
+      });
+
+      if (fitResult && fitResult.fitScore !== undefined) {
+        lastFitAssessment = fitResult;
+        displayFitAssessment(fitResult);
+
+        // Auto-set aggressiveness slider from calculated value
+        if (fitResult.aggressiveness !== undefined) {
+          const sliderValue = Math.round(fitResult.aggressiveness * 100);
+          if (elements.pdfAggressiveness) {
+            elements.pdfAggressiveness.value = sliderValue;
+          }
+          if (elements.pdfAggressivenessValue) {
+            elements.pdfAggressivenessValue.textContent = `${sliderValue}%`;
+          }
+          aggressiveness = fitResult.aggressiveness;
+        }
+
+        // Check if low fit — show warning and wait for user decision
+        if (fitResult.skipRecommendation?.skip) {
+          const shouldProceed = await waitForFitProceedConfirmation();
+          if (!shouldProceed) {
+            setProgressStep(elements.resumeProgress, "assess", "complete");
+            showToast("Generation cancelled", "info");
+            return;
+          }
+        }
+      }
+    } catch (fitError) {
+      console.warn("[Panel] Fit assessment failed (non-fatal):", fitError);
+    }
+
+    setProgressStep(elements.resumeProgress, "assess", "complete");
+
+    // Step 3: Personalize resume
+    setProgressStep(elements.resumeProgress, "personalize", "active");
 
     console.log("[DEBUG:Personalize] Sending request with:", {
       aggressiveness,
@@ -495,11 +662,16 @@ async function handleGeneratePdf() {
       vacancyKeySkills: parsedVacancy.keySkills,
     });
 
+    // Re-read slider value in case user adjusted it during assessment
+    aggressiveness =
+      Number.parseInt(elements.pdfAggressiveness?.value || "50", 10) / 100;
+
     const personalizeResult = await sendMessage({
       type: "GENERATE_PERSONALIZED_RESUME",
       baseResume,
       vacancy: parsedVacancy,
       aggressiveness,
+      fitAssessment: lastFitAssessment,
     });
 
     console.log("[DEBUG:Personalize] Result received:", {
@@ -528,7 +700,7 @@ async function handleGeneratePdf() {
 
     setProgressStep(elements.resumeProgress, "personalize", "complete");
 
-    // Step 3: Generate PDF
+    // Step 4: Generate PDF
     setProgressStep(elements.resumeProgress, "generate", "active");
     console.log("[DEBUG:PDF] Sending to PDF generator:", {
       personalizedExperienceCount: personalizeResult.experience?.length,
@@ -553,6 +725,9 @@ async function handleGeneratePdf() {
     const pdfBytes = new Uint8Array(pdfResult.pdfBytes);
     downloadPdf(pdfBytes, generatePdfFilename(parsedVacancy));
 
+    // Store job description for Form Fill tab
+    lastJobDescription = jobDescription;
+
     showToast("PDF resume generated!", "success");
 
     // Hide progress after a short delay to show completion state
@@ -564,7 +739,7 @@ async function handleGeneratePdf() {
     showError(elements.resumeError, error.message || "Failed to generate PDF");
 
     // Mark current step as error
-    for (const step of ["parse", "personalize", "generate"]) {
+    for (const step of ["parse", "assess", "personalize", "generate"]) {
       const el = elements.resumeProgress?.querySelector(
         `[data-step="${step}"]`,
       );
@@ -609,7 +784,7 @@ function downloadPdf(pdfBytes, filename) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleGenerateCoverLetter() {
-  const jobDescription = elements.coverJobDescription?.value?.trim();
+  const jobDescription = elements.jobDescriptionInput?.value?.trim();
 
   if (!jobDescription || jobDescription.length < 20) {
     showError(
@@ -648,6 +823,7 @@ async function handleGenerateCoverLetter() {
       type: "GENERATE_COVER_LETTER",
       baseResume,
       vacancy: parseResult.vacancy,
+      fitAssessment: lastFitAssessment,
     });
 
     if (!coverResult.success) {
@@ -657,6 +833,10 @@ async function handleGenerateCoverLetter() {
     // Display result
     elements.coverText.textContent = coverResult.coverLetter;
     elements.coverResult?.classList.remove("hidden");
+
+    // Store for Form Fill tab use
+    lastJobDescription = jobDescription;
+    lastGeneratedCoverLetter = coverResult.coverLetter;
 
     showToast("Cover letter generated!", "success");
   } catch (error) {
@@ -679,6 +859,358 @@ async function handleCopyCoverLetter() {
     showToast("Copied to clipboard!", "success");
   } catch (error) {
     showToast("Failed to copy", "error");
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Fit Assessment Display
+// ═══════════════════════════════════════════════════════════════════════════
+
+function displayFitAssessment(assessment) {
+  const section = elements.fitAssessmentSection;
+  const bar = elements.fitScoreBar;
+  const percentage = elements.fitScorePercentage;
+  const details = elements.fitDetails;
+
+  if (!section || !bar || !percentage || !details) return;
+
+  const score = assessment.fitScore || 0;
+  const percent = Math.round(score * 100);
+
+  // Determine color class based on thresholds
+  let colorClass = "low";
+  if (score >= 0.7) colorClass = "high";
+  else if (score >= 0.4) colorClass = "medium";
+
+  // Update bar
+  bar.style.width = `${percent}%`;
+  bar.className = `fit-score-bar ${colorClass}`;
+
+  // Update percentage text
+  percentage.textContent = `${percent}%`;
+  percentage.className = `fit-score-percentage ${colorClass}`;
+
+  // Render strengths and gaps
+  let detailsHtml = "";
+
+  if (assessment.strengths?.length) {
+    for (const strength of assessment.strengths.slice(0, 3)) {
+      detailsHtml += `<div class="fit-detail-item fit-strength"><span class="fit-icon">\u2713</span><span>${escapeHtml(strength)}</span></div>`;
+    }
+  }
+
+  if (assessment.gaps?.length) {
+    for (const gap of assessment.gaps.slice(0, 3)) {
+      detailsHtml += `<div class="fit-detail-item fit-gap"><span class="fit-icon">\u2212</span><span>${escapeHtml(gap)}</span></div>`;
+    }
+  }
+
+  details.innerHTML = detailsHtml;
+
+  // Show/hide warning
+  elements.fitWarning?.classList.add("hidden");
+
+  // Show the section
+  section.classList.remove("hidden");
+}
+
+function waitForFitProceedConfirmation() {
+  return new Promise((resolve) => {
+    // Show warning
+    elements.fitWarning?.classList.remove("hidden");
+
+    const cleanup = () => {
+      elements.fitProceedBtn?.removeEventListener("click", onProceed);
+      elements.fitCancelBtn?.removeEventListener("click", onCancel);
+    };
+
+    const onProceed = () => {
+      cleanup();
+      elements.fitWarning?.classList.add("hidden");
+      resolve(true);
+    };
+
+    const onCancel = () => {
+      cleanup();
+      elements.fitWarning?.classList.add("hidden");
+      resolve(false);
+    };
+
+    elements.fitProceedBtn?.addEventListener("click", onProceed);
+    elements.fitCancelBtn?.addEventListener("click", onCancel);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Form Fill
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function handleExtractFields() {
+  elements.extractFieldsBtn.disabled = true;
+  hideError(elements.formfillError);
+  elements.formfillAnswers?.classList.add("hidden");
+
+  try {
+    const response = await sendMessage({ type: "EXTRACT_FORM_FIELDS" });
+
+    if (!response.success) {
+      if (response.needsPermission) {
+        elements.permissionBanner?.classList.remove("hidden");
+      }
+      throw new Error(response.error || "Failed to extract form fields");
+    }
+
+    extractedFormFields = response.fields;
+    const fields = response.fields || [];
+
+    if (fields.length === 0) {
+      showError(elements.formfillError, "No form fields detected on the current page. Navigate to an application form and try again.");
+      return;
+    }
+
+    // Render fields preview
+    if (elements.formfillFieldsCount) {
+      elements.formfillFieldsCount.textContent = fields.length;
+    }
+
+    elements.formfillFieldsList.innerHTML = fields
+      .map((field) => {
+        const typeBadge = getFieldTypeBadge(field.type);
+        return `
+          <div class="formfill-field-item">
+            <span class="formfill-field-label">${escapeHtml(field.label || field.name || field.placeholder || "Unnamed field")}</span>
+            <span class="formfill-field-type ${typeBadge.class}">${typeBadge.text}</span>
+          </div>
+        `;
+      })
+      .join("");
+
+    elements.formfillFieldsPreview?.classList.remove("hidden");
+    elements.generateAnswersBtn?.classList.remove("hidden");
+
+    showToast(`Detected ${fields.length} form fields`, "success");
+  } catch (error) {
+    console.error("[Panel] Field extraction failed:", error);
+    showError(elements.formfillError, error.message || "Failed to extract fields");
+  } finally {
+    elements.extractFieldsBtn.disabled = false;
+  }
+}
+
+async function handleAiAnalyzePage() {
+  elements.aiAnalyzeBtn.disabled = true;
+  elements.extractFieldsBtn.disabled = true;
+  hideError(elements.formfillError);
+  elements.formfillAnswers?.classList.add("hidden");
+  elements.formfillFieldsPreview?.classList.add("hidden");
+  elements.generateAnswersBtn?.classList.add("hidden");
+
+  try {
+    const jobDescription =
+      elements.formfillJobDescription?.value?.trim() ||
+      lastJobDescription ||
+      "";
+
+    const response = await sendMessage({
+      type: "EXTRACT_AND_FILL_FROM_HTML",
+      jobDescription,
+      coverLetter: lastGeneratedCoverLetter,
+    });
+
+    if (!response.success) {
+      if (response.needsPermission) {
+        elements.permissionBanner?.classList.remove("hidden");
+      }
+      throw new Error(response.error || "Failed to analyze page");
+    }
+
+    const answers = response.fields || [];
+
+    if (answers.length === 0) {
+      showError(elements.formfillError, "No form fields detected by AI. The page may not contain a form.");
+      return;
+    }
+
+    renderFormFillAnswers(answers);
+    elements.formfillAnswers?.classList.remove("hidden");
+
+    const tokenInfo = response.usage
+      ? ` (${response.usage.prompt_tokens + response.usage.completion_tokens} tokens)`
+      : "";
+    showToast(`AI found ${answers.length} fields${tokenInfo}`, "success");
+  } catch (error) {
+    console.error("[Panel] AI page analysis failed:", error);
+    showError(elements.formfillError, error.message || "Failed to analyze page");
+  } finally {
+    elements.aiAnalyzeBtn.disabled = false;
+    elements.extractFieldsBtn.disabled = false;
+  }
+}
+
+function getFieldTypeBadge(type) {
+  const badges = {
+    text: { text: "Text", class: "type-text" },
+    email: { text: "Email", class: "type-email" },
+    tel: { text: "Phone", class: "type-tel" },
+    url: { text: "URL", class: "type-url" },
+    number: { text: "Number", class: "type-number" },
+    textarea: { text: "Long text", class: "type-textarea" },
+    select: { text: "Select", class: "type-select" },
+    radio: { text: "Radio", class: "type-radio" },
+    checkbox: { text: "Check", class: "type-checkbox" },
+    file: { text: "File", class: "type-file" },
+    contenteditable: { text: "Rich text", class: "type-textarea" },
+  };
+  return badges[type] || { text: type || "?", class: "type-text" };
+}
+
+async function handleGenerateAnswers() {
+  if (!extractedFormFields || extractedFormFields.length === 0) {
+    showError(elements.formfillError, "Please extract form fields first");
+    return;
+  }
+
+  elements.generateAnswersBtn.disabled = true;
+  hideError(elements.formfillError);
+
+  try {
+    // Use formfill job description, fall back to Generate tab job description
+    const jobDescription =
+      elements.formfillJobDescription?.value?.trim() ||
+      lastJobDescription ||
+      "";
+
+    const response = await sendMessage({
+      type: "GENERATE_FORM_FILL",
+      formFields: extractedFormFields,
+      jobDescription,
+      coverLetter: lastGeneratedCoverLetter,
+    });
+
+    if (!response.success) {
+      throw new Error(response.error || "Failed to generate answers");
+    }
+
+    const answers = response.fields || [];
+    renderFormFillAnswers(answers);
+    elements.formfillAnswers?.classList.remove("hidden");
+
+    showToast(`Generated ${answers.length} answers`, "success");
+  } catch (error) {
+    console.error("[Panel] Answer generation failed:", error);
+    showError(elements.formfillError, error.message || "Failed to generate answers");
+  } finally {
+    elements.generateAnswersBtn.disabled = false;
+  }
+}
+
+function renderFormFillAnswers(answers) {
+  elements.formfillAnswersList.innerHTML = answers
+    .filter((a) => a.suggestedValue !== null && a.suggestedValue !== "")
+    .map((answer, index) => {
+      const confidenceClass = `confidence-${answer.confidence || "medium"}`;
+      const isLongText = (answer.suggestedValue || "").length > 100;
+
+      return `
+        <div class="formfill-answer-item" data-index="${index}">
+          <div class="formfill-answer-header">
+            <span class="formfill-answer-label">${escapeHtml(answer.label || "Field")}</span>
+            <div class="formfill-answer-actions">
+              <span class="confidence-badge ${confidenceClass}">${answer.confidence || "medium"}</span>
+              <button class="btn-icon btn-sm copy-answer-btn" data-value="${escapeHtml(answer.suggestedValue)}" title="Copy">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          ${
+            isLongText
+              ? `<textarea class="formfill-answer-value textarea" rows="3" data-selector="${escapeHtml(answer.selector || "")}">${escapeHtml(answer.suggestedValue)}</textarea>`
+              : `<input class="formfill-answer-value input" type="text" value="${escapeHtml(answer.suggestedValue)}" data-selector="${escapeHtml(answer.selector || "")}">`
+          }
+          ${answer.note ? `<span class="formfill-answer-note">${escapeHtml(answer.note)}</span>` : ""}
+        </div>
+      `;
+    })
+    .join("");
+
+  // Attach copy handlers
+  elements.formfillAnswersList.querySelectorAll(".copy-answer-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(btn.dataset.value);
+        showToast("Copied!", "success");
+      } catch {
+        showToast("Failed to copy", "error");
+      }
+    });
+  });
+}
+
+async function handleCopyAllAnswers() {
+  const answerInputs = elements.formfillAnswersList?.querySelectorAll(".formfill-answer-value");
+  if (!answerInputs || answerInputs.length === 0) return;
+
+  const labels = elements.formfillAnswersList.querySelectorAll(".formfill-answer-label");
+  const lines = [];
+
+  answerInputs.forEach((input, i) => {
+    const label = labels[i]?.textContent || `Field ${i + 1}`;
+    const value = input.value || input.textContent || "";
+    if (value.trim()) {
+      lines.push(`${label}: ${value.trim()}`);
+    }
+  });
+
+  try {
+    await navigator.clipboard.writeText(lines.join("\n\n"));
+    showToast("All answers copied!", "success");
+  } catch {
+    showToast("Failed to copy", "error");
+  }
+}
+
+async function handleAutofill() {
+  const answerInputs = elements.formfillAnswersList?.querySelectorAll(".formfill-answer-value");
+  if (!answerInputs || answerInputs.length === 0) return;
+
+  const fieldValues = [];
+  answerInputs.forEach((input) => {
+    const selector = input.dataset.selector;
+    const value = input.value || input.textContent || "";
+    if (selector && value.trim()) {
+      fieldValues.push({ selector, value: value.trim() });
+    }
+  });
+
+  if (fieldValues.length === 0) {
+    showToast("No fields to auto-fill", "info");
+    return;
+  }
+
+  elements.autofillBtn.disabled = true;
+
+  try {
+    const response = await sendMessage({
+      type: "AUTOFILL_FORM",
+      fieldValues,
+    });
+
+    if (response.success) {
+      showToast(`Auto-filled ${response.filledCount || 0} of ${fieldValues.length} fields`, "success");
+    } else {
+      if (response.needsPermission) {
+        elements.permissionBanner?.classList.remove("hidden");
+      }
+      showToast(response.error || "Auto-fill partially failed", "info");
+    }
+  } catch (error) {
+    console.error("[Panel] Auto-fill failed:", error);
+    showToast("Auto-fill failed: " + error.message, "error");
+  } finally {
+    elements.autofillBtn.disabled = false;
   }
 }
 
@@ -1135,13 +1667,15 @@ async function loadSettings() {
     selectedResumeHash = settings.defaultHHResumeId || null;
 
     // Load default aggressiveness
-    if (
-      settings.defaultAggressiveness !== undefined &&
-      elements.pdfAggressiveness
-    ) {
-      elements.pdfAggressiveness.value = settings.defaultAggressiveness;
+    const aggrValue =
+      settings.defaultAggressiveness ??
+      (settings.aggressiveFit?.aggressivenessOverride != null
+        ? Math.round(settings.aggressiveFit.aggressivenessOverride * 100)
+        : undefined);
+    if (aggrValue !== undefined && elements.pdfAggressiveness) {
+      elements.pdfAggressiveness.value = aggrValue;
       if (elements.pdfAggressivenessValue) {
-        elements.pdfAggressivenessValue.textContent = `${settings.defaultAggressiveness}%`;
+        elements.pdfAggressivenessValue.textContent = `${aggrValue}%`;
       }
     }
   } catch (error) {
@@ -1171,10 +1705,6 @@ async function saveSettings() {
 async function getStoredSettings() {
   const result = await chrome.storage.local.get("settings");
   return result.settings || {};
-}
-
-function openOptionsPage() {
-  chrome.runtime.openOptionsPage();
 }
 
 function toggleApiKeyVisibility() {

@@ -8,6 +8,8 @@ import {
   assessFitScore,
   calculateAggressiveness,
   generateCoverLetter,
+  generateFormFillAnswers,
+  generateFormFillFromHtml,
   generatePersonalizedResume,
   generateResumeTitle,
   parseResumePDF,
@@ -15,6 +17,11 @@ import {
   shouldSkipVacancy,
 } from "../ai/openrouter.js";
 import { generatePdfResume } from "../lib/pdf-generator.js";
+import {
+  hasHostPermission,
+  isKnownJobSite,
+  getOriginPattern,
+} from "../lib/host-permissions.js";
 import { getBaseResume, getSettings } from "../lib/storage.js";
 
 // Registry for platform-specific handlers
@@ -167,6 +174,262 @@ const coreHandlers = {
 
   EXPORT_CAPTURED_REQUESTS: async () => await exportCapturedRequests(),
 
+  // Host permission handlers
+  CHECK_HOST_PERMISSION: async (message) => {
+    const url = message.url;
+    if (!url) return { success: false, error: "No URL provided" };
+    const hasPermission = await hasHostPermission(url);
+    const isKnown = isKnownJobSite(url);
+    return { success: true, hasPermission, isKnown };
+  },
+
+  INJECT_CONTENT_SCRIPT: async (_message, _sender) => {
+    try {
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      if (!tab?.id || !tab.url) {
+        return { success: false, error: "No active tab found" };
+      }
+      if (isKnownJobSite(tab.url)) {
+        return { success: true, alreadyHandled: true };
+      }
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ["platforms/universal/content-script.js"],
+      });
+      console.log(
+        "[MessageRouter] Injected content script on:",
+        tab.url,
+      );
+      return { success: true };
+    } catch (error) {
+      console.error("[MessageRouter] INJECT_CONTENT_SCRIPT error:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Form Fill handlers
+  EXTRACT_FORM_FIELDS: async (_message, _sender) => {
+    try {
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      if (!tab?.id) {
+        return { success: false, error: "No active tab found" };
+      }
+
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ["platforms/universal/form-extractor.js"],
+      });
+
+      const result = results?.[0]?.result;
+      if (!result || !result.fields) {
+        return {
+          success: false,
+          error: "Failed to extract fields from page",
+        };
+      }
+
+      console.log(
+        `[MessageRouter] Extracted ${result.fields.length} form fields from ${result.pageUrl}`,
+      );
+
+      return {
+        success: true,
+        fields: result.fields,
+        pageTitle: result.pageTitle,
+        pageUrl: result.pageUrl,
+      };
+    } catch (error) {
+      console.error("[MessageRouter] EXTRACT_FORM_FIELDS error:", error);
+      if (
+        error.message?.includes("Cannot access") ||
+        error.message?.includes("permission")
+      ) {
+        return {
+          success: false,
+          error: "Permission needed to access this page",
+          needsPermission: true,
+        };
+      }
+      return { success: false, error: error.message };
+    }
+  },
+
+  EXTRACT_AND_FILL_FROM_HTML: async (message, _sender) => {
+    try {
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      if (!tab?.id) {
+        return { success: false, error: "No active tab found" };
+      }
+
+      // Inject html-extractor.js to capture cleaned page HTML
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ["platforms/universal/html-extractor.js"],
+      });
+
+      const extraction = results?.[0]?.result;
+      if (!extraction || !extraction.html) {
+        return {
+          success: false,
+          error: "Failed to extract HTML from page",
+        };
+      }
+
+      console.log(
+        `[MessageRouter] Extracted ${extraction.charCount} chars of HTML from ${extraction.pageUrl}`,
+      );
+
+      // Get base resume
+      const baseResume = await getBaseResume();
+      if (!baseResume || !baseResume.fullName) {
+        return {
+          success: false,
+          error: "Base resume not configured",
+        };
+      }
+
+      // Call LLM with page HTML + resume data
+      const result = await generateFormFillFromHtml(
+        extraction.html,
+        baseResume,
+        message.jobDescription || "",
+        message.coverLetter || "",
+      );
+
+      return {
+        ...result,
+        pageTitle: extraction.pageTitle,
+        pageUrl: extraction.pageUrl,
+        htmlCharCount: extraction.charCount,
+      };
+    } catch (error) {
+      console.error("[MessageRouter] EXTRACT_AND_FILL_FROM_HTML error:", error);
+      if (
+        error.message?.includes("Cannot access") ||
+        error.message?.includes("permission")
+      ) {
+        return {
+          success: false,
+          error: "Permission needed to access this page",
+          needsPermission: true,
+        };
+      }
+      return { success: false, error: error.message };
+    }
+  },
+
+  GENERATE_FORM_FILL: async (message) => {
+    const baseResume = await getBaseResume();
+    if (!baseResume || !baseResume.fullName) {
+      return {
+        success: false,
+        error: "Base resume not configured",
+      };
+    }
+
+    return await generateFormFillAnswers(
+      message.formFields,
+      baseResume,
+      message.jobDescription || "",
+      message.coverLetter || "",
+    );
+  },
+
+  AUTOFILL_FORM: async (message) => {
+    try {
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      if (!tab?.id) {
+        return { success: false, error: "No active tab found" };
+      }
+
+      const fieldValues = message.fieldValues || [];
+
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: (fields) => {
+          let filledCount = 0;
+
+          for (const { selector, value } of fields) {
+            try {
+              const el = document.querySelector(selector);
+              if (!el) continue;
+
+              if (el.tagName === "SELECT") {
+                el.value = value;
+                el.dispatchEvent(new Event("change", { bubbles: true }));
+                filledCount++;
+              } else if (
+                el.tagName === "INPUT" ||
+                el.tagName === "TEXTAREA"
+              ) {
+                // Use native setter to trigger React/Angular change detection
+                const nativeInputValueSetter =
+                  Object.getOwnPropertyDescriptor(
+                    el.tagName === "TEXTAREA"
+                      ? HTMLTextAreaElement.prototype
+                      : HTMLInputElement.prototype,
+                    "value",
+                  )?.set;
+
+                if (nativeInputValueSetter) {
+                  nativeInputValueSetter.call(el, value);
+                } else {
+                  el.value = value;
+                }
+
+                el.dispatchEvent(new Event("input", { bubbles: true }));
+                el.dispatchEvent(new Event("change", { bubbles: true }));
+                el.dispatchEvent(new Event("blur", { bubbles: true }));
+                filledCount++;
+              } else if (el.getAttribute("contenteditable") === "true") {
+                el.textContent = value;
+                el.dispatchEvent(new Event("input", { bubbles: true }));
+                filledCount++;
+              }
+            } catch (e) {
+              console.warn("[ApplyHawk] Failed to fill field:", selector, e);
+            }
+          }
+
+          return { filledCount, totalFields: fields.length };
+        },
+        args: [fieldValues],
+      });
+
+      const result = results?.[0]?.result;
+      return {
+        success: true,
+        filledCount: result?.filledCount || 0,
+        totalFields: result?.totalFields || fieldValues.length,
+      };
+    } catch (error) {
+      console.error("[MessageRouter] AUTOFILL_FORM error:", error);
+      if (
+        error.message?.includes("Cannot access") ||
+        error.message?.includes("permission")
+      ) {
+        return {
+          success: false,
+          error: "Permission needed to access this page",
+          needsPermission: true,
+        };
+      }
+      return { success: false, error: error.message };
+    }
+  },
+
   // Universal job detection handlers
   UNIVERSAL_JOB_DETECTED: async (message, sender) => {
     const { payload } = message;
@@ -247,13 +510,29 @@ export async function handleMessage(message, sender) {
  * Sets up Chrome extension listeners
  */
 export function initMessageRouter() {
-  // Open side panel when extension icon is clicked
-  chrome.action.onClicked.addListener((tab) => {
-    chrome.sidePanel.open({ windowId: tab.windowId });
-  });
+  // Disable automatic panel-on-click so that action.onClicked fires,
+  // giving us the activeTab permission grant on icon click.
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
 
-  // Enable side panel for all URLs
-  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  // Open side panel when extension icon is clicked AND inject content script
+  // on unknown sites (activeTab grants temporary permission for the click).
+  chrome.action.onClicked.addListener(async (tab) => {
+    // Open side panel
+    chrome.sidePanel.open({ windowId: tab.windowId });
+
+    // On non-known sites, inject the universal content script via activeTab
+    if (tab.id && tab.url && !isKnownJobSite(tab.url) && tab.url.startsWith("http")) {
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ["platforms/universal/content-script.js"],
+        });
+        console.log("[MessageRouter] Injected content script via activeTab on:", tab.url);
+      } catch (error) {
+        console.warn("[MessageRouter] Could not inject content script:", error.message);
+      }
+    }
+  });
 
   // Message handler for communication with panel and content scripts
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -266,6 +545,66 @@ export function initMessageRouter() {
 
     // Return true to indicate async response
     return true;
+  });
+
+  // ATS form page auto-detection via URL patterns
+  const ATS_URL_PATTERNS = [
+    /\.greenhouse\.io\/.*\/apply/,
+    /\.lever\.co\/.*\/apply/,
+    /\.myworkdayjobs\.com\//,
+    /\.workday\.com\/.*\/job\//,
+    /\.smartrecruiters\.com\/.*\/apply/,
+    /\.ashbyhq\.com\/.*\/application/,
+    /\.icims\.com\//,
+    /\/apply\b/,
+    /\/application\b/,
+  ];
+
+  chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    if (changeInfo.status !== "complete" || !tab.url) return;
+
+    // ATS form page auto-detection
+    const isAtsForm = ATS_URL_PATTERNS.some((pattern) =>
+      pattern.test(tab.url),
+    );
+
+    if (isAtsForm) {
+      console.log("[MessageRouter] ATS form page detected:", tab.url);
+
+      // Notify the side panel
+      chrome.runtime
+        .sendMessage({
+          type: "ATS_FORM_DETECTED",
+          url: tab.url,
+          tabId,
+        })
+        .catch(() => {
+          // Side panel may not be open — that's OK
+        });
+    }
+
+    // Programmatic injection for sites with persistent permission (Flow B)
+    // Skip known sites (already handled by declarative content_scripts),
+    // non-http URLs, and chrome:// pages.
+    if (
+      tab.url.startsWith("http") &&
+      !isKnownJobSite(tab.url) &&
+      (await hasHostPermission(tab.url))
+    ) {
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          files: ["platforms/universal/content-script.js"],
+        });
+        console.log(
+          "[MessageRouter] Auto-injected content script (persistent permission):",
+          tab.url,
+        );
+      } catch (error) {
+        // Tab may have navigated away or closed — not critical
+        console.warn("[MessageRouter] Auto-inject failed:", error.message);
+      }
+    }
   });
 
   console.log("[MessageRouter] Initialized");

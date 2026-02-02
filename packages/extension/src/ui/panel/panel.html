@@ -21,30 +21,24 @@
         </svg>
         <span class="logo-text">ApplyHawk</span>
       </div>
-      <button id="settings-btn" class="btn-icon" title="Settings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-        </svg>
-      </button>
     </header>
 
     <!-- Main Tabs -->
     <nav class="tabs main-tabs">
-      <button class="tab active" data-tab="resume">
+      <button class="tab active" data-tab="generate">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
           <polyline points="14 2 14 8 20 8"/>
           <path d="M12 18v-6M9 15l3 3 3-3"/>
         </svg>
-        <span>Resume</span>
+        <span>Generate</span>
       </button>
-      <button class="tab" data-tab="cover">
+      <button class="tab" data-tab="formfill">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-          <polyline points="22,6 12,13 2,6"/>
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M9 12h6M9 8h6M9 16h4"/>
         </svg>
-        <span>Cover</span>
+        <span>Form Fill</span>
       </button>
       <button class="tab" data-tab="apply">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -53,25 +47,40 @@
         </svg>
         <span>Apply</span>
       </button>
-      <button class="tab" data-tab="platforms">
+      <button class="tab" data-tab="settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polygon points="12 2 2 7 12 12 22 7 12 2"/>
           <polyline points="2 17 12 22 22 17"/>
           <polyline points="2 12 12 17 22 12"/>
         </svg>
-        <span>Platforms</span>
+        <span>Settings</span>
       </button>
     </nav>
 
+    <!-- Permission Banner (shown on unknown sites without permission) -->
+    <div id="permission-banner" class="permission-banner hidden">
+      <div class="permission-banner-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <div class="permission-banner-content">
+        <span class="permission-banner-title">Enable on this site</span>
+        <span class="permission-banner-text">Grant permission to auto-detect jobs and fill forms here.</span>
+      </div>
+      <button id="permission-grant-btn" class="btn btn-sm btn-primary">Enable</button>
+    </div>
+
     <!-- Tab Content -->
     <main class="tab-panels">
-      <!-- Resume Tab -->
-      <section id="tab-resume" class="tab-content active">
+      <!-- Generate Tab (merged Resume + Cover Letter) -->
+      <section id="tab-generate" class="tab-content active">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title">PDF Resume Generator</h3>
+            <h3 class="card-title">Resume & Cover Letter Generator</h3>
           </div>
-          <p class="card-subtitle">Paste any job description to create a personalized resume</p>
+          <p class="card-subtitle">Paste any job description to create a personalized resume and cover letter</p>
 
           <div class="form-group">
             <textarea
@@ -109,50 +118,64 @@
             </div>
           </div>
 
+          <!-- Fit Assessment Section (shown after assessment) -->
+          <div id="fit-assessment-section" class="fit-assessment-section hidden">
+            <div class="fit-assessment-header">
+              <span class="fit-assessment-label">Fit Score</span>
+              <span id="fit-score-percentage" class="fit-score-percentage">0%</span>
+            </div>
+            <div class="fit-score-bar-container">
+              <div id="fit-score-bar" class="fit-score-bar"></div>
+            </div>
+            <div id="fit-details" class="fit-details"></div>
+            <div id="fit-warning" class="fit-warning hidden">
+              <div class="fit-warning-text">Low fit score — this job may not match your profile well. Aggressiveness has been increased to compensate.</div>
+              <div class="fit-warning-actions">
+                <button id="fit-cancel-btn" class="btn btn-sm btn-ghost">Cancel</button>
+                <button id="fit-proceed-btn" class="btn btn-sm btn-warning">Proceed Anyway</button>
+              </div>
+            </div>
+          </div>
+
           <!-- Progress Steps -->
           <div id="resume-progress" class="progress-steps hidden">
             <div class="progress-step" data-step="parse">
               <span class="step-indicator">1</span>
               <span class="step-text">Analyzing job description...</span>
             </div>
-            <div class="progress-step" data-step="personalize">
+            <div class="progress-step" data-step="assess">
               <span class="step-indicator">2</span>
+              <span class="step-text">Assessing fit score...</span>
+            </div>
+            <div class="progress-step" data-step="personalize">
+              <span class="step-indicator">3</span>
               <span class="step-text">Personalizing resume...</span>
             </div>
             <div class="progress-step" data-step="generate">
-              <span class="step-indicator">3</span>
+              <span class="step-indicator">4</span>
               <span class="step-text">Generating PDF...</span>
             </div>
           </div>
 
           <div id="resume-error" class="error-message hidden"></div>
 
-          <button id="generate-pdf-btn" class="btn btn-primary btn-block">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <path d="M12 18v-6M9 15l3 3 3-3"/>
-            </svg>
-            Generate PDF Resume
-          </button>
-        </div>
-      </section>
-
-      <!-- Cover Letter Tab -->
-      <section id="tab-cover" class="tab-content">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Cover Letter Generator</h3>
-          </div>
-          <p class="card-subtitle">Create a personalized cover letter for any job</p>
-
-          <div class="form-group">
-            <textarea
-              id="cover-job-description"
-              class="textarea"
-              placeholder="Paste job description here..."
-              rows="5"
-            ></textarea>
+          <!-- Side-by-side buttons -->
+          <div class="btn-group">
+            <button id="generate-pdf-btn" class="btn btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <path d="M12 18v-6M9 15l3 3 3-3"/>
+              </svg>
+              Generate PDF
+            </button>
+            <button id="generate-cover-btn" class="btn btn-secondary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+              Cover Letter
+            </button>
           </div>
 
           <!-- Generated Cover Letter -->
@@ -173,14 +196,82 @@
           </div>
 
           <div id="cover-error" class="error-message hidden"></div>
+        </div>
+      </section>
 
-          <button id="generate-cover-btn" class="btn btn-primary btn-block">
+      <!-- Form Fill Tab -->
+      <section id="tab-formfill" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">ATS Form Fill Assistant</h3>
+          </div>
+          <p class="card-subtitle">Auto-detect and fill application forms on ATS pages</p>
+
+          <div class="form-group">
+            <textarea
+              id="formfill-job-description"
+              class="textarea"
+              placeholder="Job description (auto-filled from Generate tab if available)..."
+              rows="3"
+            ></textarea>
+          </div>
+
+          <div class="btn-group">
+            <button id="extract-fields-btn" class="btn btn-secondary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+              </svg>
+              Extract Fields
+            </button>
+            <button id="ai-analyze-btn" class="btn btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
+              AI Analyze Page
+            </button>
+          </div>
+
+          <!-- Detected Fields Preview -->
+          <div id="formfill-fields-preview" class="formfill-fields-preview hidden">
+            <div class="formfill-fields-header">
+              <span class="label">Detected Fields</span>
+              <span id="formfill-fields-count" class="badge">0</span>
+            </div>
+            <div id="formfill-fields-list" class="formfill-fields-list"></div>
+          </div>
+
+          <button id="generate-answers-btn" class="btn btn-primary btn-block hidden">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-              <polyline points="22,6 12,13 2,6"/>
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
             </svg>
-            Generate Cover Letter
+            Generate Answers
           </button>
+
+          <div id="formfill-error" class="error-message hidden"></div>
+
+          <!-- Generated Answers -->
+          <div id="formfill-answers" class="formfill-answers hidden">
+            <div class="formfill-answers-header">
+              <span class="label">Suggested Answers</span>
+              <div class="formfill-answers-actions">
+                <button id="copy-all-answers-btn" class="btn btn-sm btn-ghost" title="Copy all answers">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                  Copy All
+                </button>
+                <button id="autofill-btn" class="btn btn-sm btn-primary" title="Auto-fill simple fields">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                  </svg>
+                  Auto-Fill
+                </button>
+              </div>
+            </div>
+            <div id="formfill-answers-list" class="formfill-answers-list"></div>
+          </div>
         </div>
       </section>
 
@@ -250,8 +341,8 @@
         </div>
       </section>
 
-      <!-- Platforms Tab -->
-      <section id="tab-platforms" class="tab-content">
+      <!-- Settings Tab -->
+      <section id="tab-settings" class="tab-content">
         <!-- HH.ru Platform Card -->
         <div class="card platform-card">
           <div class="platform-card-header">

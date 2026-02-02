@@ -25,7 +25,15 @@
     "https://greenhouse.io/*",
     "https://*.greenhouse.io/*",
     "https://lever.co/*",
-    "https://*.lever.co/*"
+    "https://*.lever.co/*",
+    "https://*.myworkdayjobs.com/*",
+    "https://*.workday.com/*",
+    "https://*.icims.com/*",
+    "https://*.ashbyhq.com/*",
+    "https://*.smartrecruiters.com/*"
+  ],
+  "optional_host_permissions": [
+    "<all_urls>"
   ],
   "background": {
     "service_worker": "background.js",

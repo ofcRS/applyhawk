@@ -120,6 +120,22 @@ if (existsSync("src/core/utils/network-interceptor.js")) {
   );
 }
 
+// Copy form extractor (not bundled, injected via chrome.scripting.executeScript)
+if (existsSync("src/platforms/universal/form-extractor.js")) {
+  copyFileSync(
+    "src/platforms/universal/form-extractor.js",
+    join(outDir, "platforms", "universal", "form-extractor.js"),
+  );
+}
+
+// Copy HTML extractor (not bundled, injected via chrome.scripting.executeScript)
+if (existsSync("src/platforms/universal/html-extractor.js")) {
+  copyFileSync(
+    "src/platforms/universal/html-extractor.js",
+    join(outDir, "platforms", "universal", "html-extractor.js"),
+  );
+}
+
 // Copy icons folder
 if (existsSync("icons")) {
   cpSync("icons", join(outDir, "icons"), { recursive: true });
