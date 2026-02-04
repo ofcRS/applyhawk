@@ -618,6 +618,95 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   Autofill Verification
+   ───────────────────────────────────────────────────────────────────────── */
+
+.autofill-verification {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  background: var(--color-surface-0);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  animation: fitFadeIn 0.3s ease;
+}
+
+.autofill-verification.hidden {
+  display: none;
+}
+
+.verification-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.verification-title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+}
+
+.verification-status {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.verification-status.has-issues {
+  color: var(--color-warning);
+}
+
+.verification-failed-list {
+  margin-bottom: var(--space-3);
+  max-height: 120px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.verification-failed-list.hidden {
+  display: none;
+}
+
+.verification-failed-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-error-dim);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  color: var(--color-error);
+}
+
+.verification-failed-item .failed-icon {
+  flex-shrink: 0;
+  font-size: var(--text-sm);
+}
+
+.verification-failed-item .failed-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.verification-failed-item .failed-reason {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  opacity: 0.8;
+}
+
+.verification-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    Platform Selector (Apply Tab)
    ───────────────────────────────────────────────────────────────────────── */
 

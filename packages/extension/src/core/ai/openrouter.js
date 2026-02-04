@@ -847,6 +847,7 @@ export async function generateFormFillFromHtml(
   baseResume,
   jobDescription = "",
   coverLetter = "",
+  previousAttempt = null,
 ) {
   const settings = await getSettings();
 
@@ -881,6 +882,34 @@ export async function generateFormFillFromHtml(
         .join("\n")
     : "Not specified";
 
+  // Build retry context from previous attempt if available
+  let retryContext = "";
+  if (previousAttempt) {
+    const failedFields = (previousAttempt.fieldResults || [])
+      .filter((f) => f.status !== "filled")
+      .map(
+        (f) =>
+          `- Selector "${f.selector}" (${f.label}): ${f.status}${f.error ? ` — ${f.error}` : ""}`,
+      )
+      .join("\n");
+
+    retryContext = `
+RETRY CONTEXT (Attempt ${previousAttempt.attemptNumber} of 3):
+The previous auto-fill attempt had issues. The page HTML below is freshly extracted and may have changed (dynamic forms).
+
+Failed/problematic fields from previous attempt:
+${failedFields || "None specifically identified"}
+
+${previousAttempt.userFeedback ? `User feedback: "${previousAttempt.userFeedback}"` : ""}
+
+IMPORTANT for this retry:
+- Try DIFFERENT selectors for fields that failed (the previous selectors did not work)
+- Check for dynamically loaded elements that may have new IDs or classes
+- Look for alternative ways to target the same fields (aria-label, placeholder, parent selectors)
+- The HTML below is a fresh extraction — selectors from the previous attempt may no longer be valid
+`;
+  }
+
   const promptTemplate = await buildPromptFromTemplate("form-fill-from-html", {
     candidate: {
       fullName: baseResume.fullName || "",
@@ -896,6 +925,7 @@ export async function generateFormFillFromHtml(
     jobDescription: jobDescription.substring(0, 3000) || "Not provided",
     coverLetter: coverLetter || "Not generated yet",
     pageHtml,
+    retryContext,
   });
 
   const data = await callOpenRouter({

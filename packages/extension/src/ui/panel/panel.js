@@ -34,6 +34,12 @@ let lastJobDescription = "";
 let lastGeneratedCoverLetter = "";
 let lastFitAssessment = null;
 let extractedFormFields = null;
+let autofillAttempt = 0;
+let lastAutofillResult = null;
+let lastCacheKey = null;
+let lastFromCache = false;
+let lastFormFillFields = null;
+const MAX_AUTOFILL_ATTEMPTS = 3;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DOM Elements
@@ -78,6 +84,15 @@ const elements = {
   copyAllAnswersBtn: document.getElementById("copy-all-answers-btn"),
   autofillBtn: document.getElementById("autofill-btn"),
 
+  // Autofill Verification
+  autofillVerification: document.getElementById("autofill-verification"),
+  verificationStatus: document.getElementById("verification-status"),
+  verificationFailedList: document.getElementById("verification-failed-list"),
+  verificationFeedback: document.getElementById("verification-feedback"),
+  verificationAcceptBtn: document.getElementById("verification-accept-btn"),
+  verificationRetryBtn: document.getElementById("verification-retry-btn"),
+  verificationRetryText: document.getElementById("verification-retry-text"),
+
   // Apply Tab - HH.ru
   hhAuthIcon: document.getElementById("hh-auth-icon"),
   hhAuthTitle: document.getElementById("hh-auth-title"),
@@ -121,6 +136,9 @@ const elements = {
   // Permission Banner
   permissionBanner: document.getElementById("permission-banner"),
   permissionGrantBtn: document.getElementById("permission-grant-btn"),
+
+  // Form Cache
+  clearFormCacheBtn: document.getElementById("clear-form-cache-btn"),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -154,7 +172,7 @@ async function init() {
   elements.aiAnalyzeBtn?.addEventListener("click", handleAiAnalyzePage);
   elements.generateAnswersBtn?.addEventListener("click", handleGenerateAnswers);
   elements.copyAllAnswersBtn?.addEventListener("click", handleCopyAllAnswers);
-  elements.autofillBtn?.addEventListener("click", handleAutofill);
+  elements.autofillBtn?.addEventListener("click", handleIterativeAutofill);
 
   // Listen for ATS form detection from background
   chrome.runtime.onMessage.addListener((message) => {
@@ -197,6 +215,9 @@ async function init() {
 
   // Permission banner — "Enable" button requests persistent host permission
   elements.permissionGrantBtn?.addEventListener("click", handleGrantPermission);
+
+  // Form template cache
+  elements.clearFormCacheBtn?.addEventListener("click", handleClearFormCache);
 
   // Listen for vacancy data changes (handles case when panel is already open)
   chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -274,11 +295,17 @@ async function checkTabPermission() {
 }
 
 async function handleGrantPermission() {
-  if (!currentTabUrl) return;
-
   try {
+    // Always fetch the current tab URL to handle navigation after panel open
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+    const tabUrl = tab?.url || currentTabUrl;
+    if (!tabUrl || !tabUrl.startsWith("http")) return;
+
     // Build origin pattern from the current tab URL
-    const url = new URL(currentTabUrl);
+    const url = new URL(tabUrl);
     const parts = url.hostname.split(".");
     const domain = parts.length > 2 ? parts.slice(-2).join(".") : url.hostname;
     const pattern = `${url.protocol}//*.${domain}/*`;
@@ -289,8 +316,10 @@ async function handleGrantPermission() {
       elements.permissionBanner?.classList.add("hidden");
       showToast("Permission granted — reloading page", "success");
 
-      // Inject content script on the active tab now
-      await sendMessage({ type: "INJECT_CONTENT_SCRIPT" });
+      // Reload the tab so content scripts can be injected on the now-permitted domain
+      if (tab?.id) {
+        chrome.tabs.reload(tab.id);
+      }
     } else {
       showToast("Permission denied", "info");
     }
@@ -955,7 +984,8 @@ async function handleExtractFields() {
 
     if (!response.success) {
       if (response.needsPermission) {
-        elements.permissionBanner?.classList.remove("hidden");
+        await handleGrantPermission();
+        return;
       }
       throw new Error(response.error || "Failed to extract form fields");
     }
@@ -1019,12 +1049,18 @@ async function handleAiAnalyzePage() {
 
     if (!response.success) {
       if (response.needsPermission) {
-        elements.permissionBanner?.classList.remove("hidden");
+        await handleGrantPermission();
+        return;
       }
       throw new Error(response.error || "Failed to analyze page");
     }
 
     const answers = response.fields || [];
+
+    // Track cache state for save-on-accept
+    lastCacheKey = response.cacheKey || null;
+    lastFromCache = response.fromCache === true;
+    lastFormFillFields = answers;
 
     if (answers.length === 0) {
       showError(elements.formfillError, "No form fields detected by AI. The page may not contain a form.");
@@ -1034,10 +1070,11 @@ async function handleAiAnalyzePage() {
     renderFormFillAnswers(answers);
     elements.formfillAnswers?.classList.remove("hidden");
 
-    const tokenInfo = response.usage
+    const cacheLabel = lastFromCache ? " (cached)" : "";
+    const tokenInfo = !lastFromCache && response.usage
       ? ` (${response.usage.prompt_tokens + response.usage.completion_tokens} tokens)`
       : "";
-    showToast(`AI found ${answers.length} fields${tokenInfo}`, "success");
+    showToast(`AI found ${answers.length} fields${cacheLabel}${tokenInfo}`, "success");
   } catch (error) {
     console.error("[Panel] AI page analysis failed:", error);
     showError(elements.formfillError, error.message || "Failed to analyze page");
@@ -1172,16 +1209,25 @@ async function handleCopyAllAnswers() {
   }
 }
 
-async function handleAutofill() {
+async function handleIterativeAutofill() {
+  autofillAttempt = 0;
+  lastAutofillResult = null;
+  hideVerificationPrompt();
+  await performAutofillAndVerify();
+}
+
+async function performAutofillAndVerify() {
   const answerInputs = elements.formfillAnswersList?.querySelectorAll(".formfill-answer-value");
   if (!answerInputs || answerInputs.length === 0) return;
 
   const fieldValues = [];
-  answerInputs.forEach((input) => {
+  const answerLabels = elements.formfillAnswersList.querySelectorAll(".formfill-answer-label");
+  answerInputs.forEach((input, i) => {
     const selector = input.dataset.selector;
     const value = input.value || input.textContent || "";
+    const label = answerLabels[i]?.textContent || "";
     if (selector && value.trim()) {
-      fieldValues.push({ selector, value: value.trim() });
+      fieldValues.push({ selector, label, value: value.trim() });
     }
   });
 
@@ -1190,7 +1236,9 @@ async function handleAutofill() {
     return;
   }
 
+  autofillAttempt++;
   elements.autofillBtn.disabled = true;
+  hideVerificationPrompt();
 
   try {
     const response = await sendMessage({
@@ -1198,19 +1246,191 @@ async function handleAutofill() {
       fieldValues,
     });
 
-    if (response.success) {
-      showToast(`Auto-filled ${response.filledCount || 0} of ${fieldValues.length} fields`, "success");
-    } else {
+    if (!response.success) {
       if (response.needsPermission) {
-        elements.permissionBanner?.classList.remove("hidden");
+        await handleGrantPermission();
+        return;
       }
-      showToast(response.error || "Auto-fill partially failed", "info");
+      showToast(response.error || "Auto-fill failed", "error");
+      return;
+    }
+
+    lastAutofillResult = response;
+    const fieldResults = response.fieldResults || [];
+    const failedFields = fieldResults.filter((f) => f.status !== "filled");
+    const isFinal = autofillAttempt >= MAX_AUTOFILL_ATTEMPTS;
+
+    showToast(
+      `Auto-filled ${response.filledCount || 0} of ${fieldValues.length} fields`,
+      failedFields.length > 0 ? "info" : "success",
+    );
+
+    // Show verification prompt
+    const userAction = await showVerificationPrompt(fieldResults, isFinal);
+
+    if (userAction.action === "accept") {
+      hideVerificationPrompt();
+      showToast("Form fill complete!", "success");
+    } else if (userAction.action === "retry") {
+      await retryWithFeedback(fieldResults, userAction.feedback);
     }
   } catch (error) {
     console.error("[Panel] Auto-fill failed:", error);
     showToast("Auto-fill failed: " + error.message, "error");
   } finally {
     elements.autofillBtn.disabled = false;
+  }
+}
+
+async function retryWithFeedback(fieldResults, userFeedback) {
+  hideVerificationPrompt();
+
+  elements.aiAnalyzeBtn.disabled = true;
+  elements.autofillBtn.disabled = true;
+  showToast(`Re-analyzing page (attempt ${autofillAttempt + 1}/${MAX_AUTOFILL_ATTEMPTS})...`, "info");
+
+  // Small delay to allow dynamic forms to settle
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  try {
+    const jobDescription =
+      elements.formfillJobDescription?.value?.trim() ||
+      lastJobDescription ||
+      "";
+
+    const response = await sendMessage({
+      type: "EXTRACT_AND_FILL_FROM_HTML",
+      jobDescription,
+      coverLetter: lastGeneratedCoverLetter,
+      previousAttempt: {
+        attemptNumber: autofillAttempt,
+        fieldResults,
+        userFeedback: userFeedback || "",
+      },
+    });
+
+    if (!response.success) {
+      if (response.needsPermission) {
+        await handleGrantPermission();
+        return;
+      }
+      showToast(response.error || "Re-analysis failed", "error");
+      return;
+    }
+
+    const answers = response.fields || [];
+    if (answers.length === 0) {
+      showToast("No fields detected on retry", "info");
+      return;
+    }
+
+    renderFormFillAnswers(answers);
+    elements.formfillAnswers?.classList.remove("hidden");
+
+    // Automatically trigger fill with the new answers
+    await performAutofillAndVerify();
+  } catch (error) {
+    console.error("[Panel] Retry failed:", error);
+    showToast("Retry failed: " + error.message, "error");
+  } finally {
+    elements.aiAnalyzeBtn.disabled = false;
+    elements.autofillBtn.disabled = false;
+  }
+}
+
+function showVerificationPrompt(fieldResults, isFinal) {
+  return new Promise((resolve) => {
+    const failedFields = fieldResults.filter((f) => f.status !== "filled");
+
+    // Update status text
+    if (failedFields.length > 0) {
+      elements.verificationStatus.textContent = `${failedFields.length} field${failedFields.length !== 1 ? "s" : ""} may need attention`;
+      elements.verificationStatus.classList.add("has-issues");
+    } else {
+      elements.verificationStatus.textContent = "All fields filled successfully";
+      elements.verificationStatus.classList.remove("has-issues");
+    }
+
+    // Render failed fields list
+    if (failedFields.length > 0) {
+      elements.verificationFailedList.innerHTML = failedFields
+        .map((f) => `
+          <div class="verification-failed-item">
+            <span class="failed-icon">\u2717</span>
+            <span class="failed-label">${escapeHtml(f.label || f.selector)}</span>
+            <span class="failed-reason">${escapeHtml(f.status)}</span>
+          </div>
+        `)
+        .join("");
+      elements.verificationFailedList.classList.remove("hidden");
+    } else {
+      elements.verificationFailedList.classList.add("hidden");
+    }
+
+    // Update retry button text and visibility
+    if (isFinal) {
+      elements.verificationRetryBtn.disabled = true;
+      elements.verificationRetryText.textContent = "Max retries reached";
+    } else {
+      elements.verificationRetryBtn.disabled = false;
+      elements.verificationRetryText.textContent = `Retry (${autofillAttempt}/${MAX_AUTOFILL_ATTEMPTS})`;
+    }
+
+    // Clear feedback
+    if (elements.verificationFeedback) {
+      elements.verificationFeedback.value = "";
+    }
+
+    // Show the section
+    elements.autofillVerification?.classList.remove("hidden");
+
+    const cleanup = () => {
+      elements.verificationAcceptBtn?.removeEventListener("click", onAccept);
+      elements.verificationRetryBtn?.removeEventListener("click", onRetry);
+    };
+
+    const onAccept = () => {
+      cleanup();
+      // Save template to cache on successful accept
+      if (lastCacheKey && lastFormFillFields?.length && !lastFromCache) {
+        sendMessage({
+          type: "SAVE_FORM_TEMPLATE",
+          cacheKey: lastCacheKey,
+          fields: lastFormFillFields,
+        }).catch((err) => console.warn("[Panel] Failed to save form template:", err));
+      }
+      // Reset fail count if using cached template
+      if (lastCacheKey && lastFromCache) {
+        sendMessage({
+          type: "RESET_FORM_TEMPLATE_FAIL",
+          cacheKey: lastCacheKey,
+        }).catch(() => {});
+      }
+      resolve({ action: "accept", feedback: "" });
+    };
+
+    const onRetry = () => {
+      cleanup();
+      // Increment fail count for cache
+      if (lastCacheKey) {
+        sendMessage({
+          type: "INCREMENT_FORM_TEMPLATE_FAIL",
+          cacheKey: lastCacheKey,
+        }).catch(() => {});
+      }
+      const feedback = elements.verificationFeedback?.value?.trim() || "";
+      resolve({ action: "retry", feedback });
+    };
+
+    elements.verificationAcceptBtn?.addEventListener("click", onAccept);
+    elements.verificationRetryBtn?.addEventListener("click", onRetry);
+  });
+}
+
+function hideVerificationPrompt() {
+  elements.autofillVerification?.classList.add("hidden");
+  if (elements.verificationFeedback) {
+    elements.verificationFeedback.value = "";
   }
 }
 
@@ -1711,6 +1931,16 @@ function toggleApiKeyVisibility() {
   const input = elements.apiKeyInput;
   if (input) {
     input.type = input.type === "password" ? "text" : "password";
+  }
+}
+
+async function handleClearFormCache() {
+  try {
+    await sendMessage({ type: "CLEAR_FORM_TEMPLATE_CACHE" });
+    showToast("Form cache cleared", "success");
+  } catch (error) {
+    console.error("[Panel] Failed to clear form cache:", error);
+    showToast("Failed to clear cache", "error");
   }
 }
 

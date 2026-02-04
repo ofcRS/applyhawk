@@ -8,6 +8,7 @@ const STORAGE_KEYS = {
   SETTINGS: "settings",
   APPLIED_VACANCIES: "appliedVacancies",
   DAILY_COUNTER: "dailyCounter",
+  FORM_TEMPLATE_CACHE: "formTemplateCache",
 };
 
 /**

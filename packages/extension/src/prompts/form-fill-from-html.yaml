@@ -33,6 +33,8 @@ user: |
 
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+  {{retryContext}}
+
   TASK:
   1. Analyze the HTML above and identify ALL interactive form fields (inputs, textareas, selects, contenteditable elements, custom dropdowns, radio groups, checkboxes).
   2. For each field, generate a unique CSS selector that will work with document.querySelector().

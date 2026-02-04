@@ -23,6 +23,15 @@ import {
   getOriginPattern,
 } from "../lib/host-permissions.js";
 import { getBaseResume, getSettings } from "../lib/storage.js";
+import {
+  getCacheKey,
+  getCachedTemplate,
+  saveTemplate,
+  invalidateTemplate,
+  incrementFailCount,
+  resetFailCount,
+  clearAllTemplates,
+} from "../lib/form-template-cache.js";
 
 // Registry for platform-specific handlers
 const platformHandlers = new Map();
@@ -270,6 +279,72 @@ const coreHandlers = {
         return { success: false, error: "No active tab found" };
       }
 
+      const pageUrl = tab.url || "";
+      const cacheKey = getCacheKey(pageUrl);
+
+      // --- Cache-first path ---
+      if (cacheKey && !message.previousAttempt) {
+        const cached = await getCachedTemplate(cacheKey);
+        if (cached) {
+          // Validate cached selectors exist on the page
+          const cachedSelectors = cached.fields
+            .map((f) => f.selector)
+            .filter(Boolean);
+
+          const validationResults = await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: (selectors) => {
+              let found = 0;
+              for (const sel of selectors) {
+                if (document.querySelector(sel)) found++;
+              }
+              return {
+                found,
+                total: selectors.length,
+                rate: selectors.length > 0 ? found / selectors.length : 0,
+              };
+            },
+            args: [cachedSelectors],
+          });
+
+          const validation = validationResults?.[0]?.result;
+
+          if (validation && validation.rate >= 0.5) {
+            console.log(
+              `[MessageRouter] Cache HIT for ${cacheKey}: ${validation.found}/${validation.total} selectors valid`,
+            );
+
+            // Use cheap generateFormFillAnswers with cached field structure
+            const baseResume = await getBaseResume();
+            if (!baseResume || !baseResume.fullName) {
+              return { success: false, error: "Base resume not configured" };
+            }
+
+            const result = await generateFormFillAnswers(
+              cached.fields,
+              baseResume,
+              message.jobDescription || "",
+              message.coverLetter || "",
+            );
+
+            return {
+              ...result,
+              pageUrl,
+              fromCache: true,
+              cacheKey,
+            };
+          }
+
+          // Selectors stale — invalidate and fall through
+          console.log(
+            `[MessageRouter] Cache STALE for ${cacheKey}: ${validation?.found}/${validation?.total} selectors valid, invalidating`,
+          );
+          await invalidateTemplate(cacheKey);
+        }
+      }
+
+      // --- Full HTML analysis path (cache miss or retry) ---
+
       // Inject html-extractor.js to capture cleaned page HTML
       const results = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
@@ -303,13 +378,16 @@ const coreHandlers = {
         baseResume,
         message.jobDescription || "",
         message.coverLetter || "",
+        message.previousAttempt || null,
       );
 
       return {
         ...result,
         pageTitle: extraction.pageTitle,
-        pageUrl: extraction.pageUrl,
+        pageUrl: extraction.pageUrl || pageUrl,
         htmlCharCount: extraction.charCount,
+        fromCache: false,
+        cacheKey,
       };
     } catch (error) {
       console.error("[MessageRouter] EXTRACT_AND_FILL_FROM_HTML error:", error);
@@ -360,16 +438,25 @@ const coreHandlers = {
         target: { tabId: tab.id },
         func: (fields) => {
           let filledCount = 0;
+          const fieldResults = [];
 
-          for (const { selector, value } of fields) {
+          for (const { selector, label, value } of fields) {
+            const result = { selector, label: label || "", expectedValue: value, actualValue: null, status: "not_found", error: null };
+
             try {
               const el = document.querySelector(selector);
-              if (!el) continue;
+              if (!el) {
+                fieldResults.push(result);
+                continue;
+              }
 
               if (el.tagName === "SELECT") {
                 el.value = value;
                 el.dispatchEvent(new Event("change", { bubbles: true }));
-                filledCount++;
+                result.actualValue = el.value;
+                result.status = el.value === value ? "filled" : "error";
+                if (result.status === "error") result.error = "Select value mismatch";
+                if (result.status === "filled") filledCount++;
               } else if (
                 el.tagName === "INPUT" ||
                 el.tagName === "TEXTAREA"
@@ -392,18 +479,29 @@ const coreHandlers = {
                 el.dispatchEvent(new Event("input", { bubbles: true }));
                 el.dispatchEvent(new Event("change", { bubbles: true }));
                 el.dispatchEvent(new Event("blur", { bubbles: true }));
-                filledCount++;
+
+                // Read back to verify
+                result.actualValue = el.value;
+                result.status = el.value === value ? "filled" : "error";
+                if (result.status === "error") result.error = "Value not set correctly";
+                if (result.status === "filled") filledCount++;
               } else if (el.getAttribute("contenteditable") === "true") {
                 el.textContent = value;
                 el.dispatchEvent(new Event("input", { bubbles: true }));
+                result.actualValue = el.textContent;
+                result.status = "filled";
                 filledCount++;
               }
             } catch (e) {
               console.warn("[ApplyHawk] Failed to fill field:", selector, e);
+              result.status = "error";
+              result.error = e.message || "Unknown error";
             }
+
+            fieldResults.push(result);
           }
 
-          return { filledCount, totalFields: fields.length };
+          return { filledCount, totalFields: fields.length, fieldResults };
         },
         args: [fieldValues],
       });
@@ -413,6 +511,7 @@ const coreHandlers = {
         success: true,
         filledCount: result?.filledCount || 0,
         totalFields: result?.totalFields || fieldValues.length,
+        fieldResults: result?.fieldResults || [],
       };
     } catch (error) {
       console.error("[MessageRouter] AUTOFILL_FORM error:", error);
@@ -481,6 +580,35 @@ const coreHandlers = {
     }
 
     return { success: true, panelOpened };
+  },
+
+  // Form template cache handlers
+  SAVE_FORM_TEMPLATE: async (message) => {
+    const { cacheKey, fields } = message;
+    if (!cacheKey || !fields?.length) {
+      return { success: false, error: "Missing cacheKey or fields" };
+    }
+    await saveTemplate(cacheKey, fields);
+    return { success: true };
+  },
+
+  INCREMENT_FORM_TEMPLATE_FAIL: async (message) => {
+    if (message.cacheKey) {
+      await incrementFailCount(message.cacheKey);
+    }
+    return { success: true };
+  },
+
+  RESET_FORM_TEMPLATE_FAIL: async (message) => {
+    if (message.cacheKey) {
+      await resetFailCount(message.cacheKey);
+    }
+    return { success: true };
+  },
+
+  CLEAR_FORM_TEMPLATE_CACHE: async () => {
+    await clearAllTemplates();
+    return { success: true };
   },
 };
 
