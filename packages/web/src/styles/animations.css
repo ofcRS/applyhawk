@@ -54,10 +54,10 @@
 
 @keyframes glowPulse {
   0%, 100% {
-    box-shadow: 0 0 20px rgba(232, 162, 48, 0.2);
+    box-shadow: 0 0 20px rgba(99, 91, 255, 0.15);
   }
   50% {
-    box-shadow: 0 0 40px rgba(232, 162, 48, 0.4);
+    box-shadow: 0 0 40px rgba(99, 91, 255, 0.3);
   }
 }
 
@@ -86,7 +86,3 @@
   50% { opacity: 0; }
 }
 
-@keyframes gridPulse {
-  0%, 100% { opacity: 0.03; }
-  50% { opacity: 0.06; }
-}

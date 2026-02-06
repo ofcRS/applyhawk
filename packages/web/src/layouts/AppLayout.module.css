@@ -159,7 +159,7 @@
     bottom: 0;
     left: 0;
     right: 0;
-    background: #131316;
+    background: var(--bg-elevated);
     border-top: 1px solid var(--border);
     z-index: 20;
     padding: 0.5rem 0;

@@ -11,7 +11,7 @@
 }
 
 .modal {
-  background: #131316;
+  background: var(--bg-elevated);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
   max-width: 500px;
