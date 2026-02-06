@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, FileText, Layers, Settings } from "lucide-react";
+import { FileText, Layers, Settings } from "lucide-react";
 import { useContext } from "react";
 import type { ReactNode } from "react";
 import LanguageToggle from "../components/common/LanguageToggle";
@@ -33,9 +33,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             navigate("/");
           }}
         >
-          <span className={styles.logoIcon}>
-            <BriefcaseBusiness size={16} />
-          </span>
+          <img src="/favicon.png" alt="" className={styles.logoIcon} />
           <span className={styles.logoText}>{t.appName}</span>
         </a>
 

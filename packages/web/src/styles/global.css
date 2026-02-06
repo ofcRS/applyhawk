@@ -9,12 +9,12 @@
   --bg-elevated: #ffffff;
   --bg-overlay: rgba(0, 0, 0, 0.4);
 
-  /* Accent - Indigo */
-  --accent-from: #635BFF;
-  --accent-to: #7C6AFF;
+  /* Accent - Blue-Teal (matches icon) */
+  --accent-from: #3F96D2;
+  --accent-to: #11CACD;
   --accent-gradient: linear-gradient(135deg, var(--accent-from), var(--accent-to));
-  --accent-glow: 0 0 20px rgba(99, 91, 255, 0.2);
-  --accent-subtle: rgba(99, 91, 255, 0.08);
+  --accent-glow: 0 0 20px rgba(63, 150, 210, 0.2);
+  --accent-subtle: rgba(63, 150, 210, 0.08);
 
   /* Text */
   --text-primary: #0f172a;

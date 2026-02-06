@@ -1,8 +1,12 @@
 {
   "name": "applyhawk-monorepo",
   "version": "1.0.0",
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/js-yaml": "^4.0.9",
+    "sharp": "^0.34.5"
+  },
   "private": true,
-  "workspaces": ["packages/*"],
   "scripts": {
     "build": "bun run build:core && bun run build:extension",
     "build:core": "bun --cwd packages/core run typecheck",
@@ -13,8 +17,5 @@
     "lint": "biome check --write .",
     "format": "biome format --write ."
   },
-  "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
-    "@types/js-yaml": "^4.0.9"
-  }
+  "workspaces": ["packages/*"]
 }

@@ -20,12 +20,12 @@
   --color-border-strong: #3a3a40;
   --color-border-subtle: #1e1e22;
 
-  /* Primary - Warm Amber */
-  --color-primary: #e8a230;
-  --color-primary-hover: #f0b040;
-  --color-primary-active: #d4922a;
-  --color-primary-dim: rgba(232, 162, 48, 0.12);
-  --color-primary-glow: rgba(232, 162, 48, 0.25);
+  /* Primary - Blue (matches icon) */
+  --color-primary: #3F96D2;
+  --color-primary-hover: #5AABE0;
+  --color-primary-active: #2E7AB8;
+  --color-primary-dim: rgba(63, 150, 210, 0.12);
+  --color-primary-glow: rgba(63, 150, 210, 0.25);
 
   /* Secondary - Slate */
   --color-secondary: #64748b;
@@ -48,8 +48,8 @@
   --color-error: #ef4444;
   --color-error-dim: rgba(239, 68, 68, 0.15);
 
-  --color-info: #e8a230;
-  --color-info-dim: rgba(232, 162, 48, 0.15);
+  --color-info: #3F96D2;
+  --color-info-dim: rgba(63, 150, 210, 0.15);
 
   /* Text */
   --color-text-primary: #e8e6e1;
@@ -62,8 +62,8 @@
      Typography
      ───────────────────────────────────────────────────────────────────────── */
 
-  --font-sans: "DM Mono", "SF Mono", "Fira Code", monospace;
-  --font-mono: "DM Mono", "SF Mono", "Fira Code", monospace;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
 
   /* Font Sizes */
   --text-xs: 11px;

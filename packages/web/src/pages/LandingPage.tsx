@@ -88,7 +88,7 @@ export default function LandingPage() {
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.logoLink}>
-          <span className={styles.logoMark}>A</span>
+          <img src="/favicon.png" alt="" className={styles.logoMark} />
           <span className={styles.logoText}>{t.appName}</span>
         </div>
         <div className={styles.headerActions}>
