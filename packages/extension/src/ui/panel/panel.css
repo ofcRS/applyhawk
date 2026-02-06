@@ -35,10 +35,17 @@
   gap: var(--space-2);
 }
 
-.logo-icon {
+.logo-mark {
   width: 24px;
   height: 24px;
-  color: var(--color-primary);
+  background: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  font-style: italic;
+  font-weight: var(--font-bold);
+  color: var(--color-text-inverse);
 }
 
 .logo-text {
@@ -374,7 +381,7 @@
 }
 
 .btn-warning:hover {
-  background: #d97706;
+  background: #d4922a;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

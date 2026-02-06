@@ -24,9 +24,19 @@ export interface Translations {
   navSettings: string;
 
   // Landing
+  heroLabel: string;
   heroTitle: string;
+  heroTitleHighlight: string;
   heroSubtitle: string;
   heroCta: string;
+  heroGithub: string;
+  heroStat1Value: string;
+  heroStat1Label: string;
+  heroStat2Value: string;
+  heroStat2Label: string;
+  heroStat3Value: string;
+  heroStat3Label: string;
+  featSectionTitle: string;
   featPersonalizationTitle: string;
   featPersonalizationDesc: string;
   featAssessmentTitle: string;
@@ -42,6 +52,7 @@ export interface Translations {
   howStep2Desc: string;
   howStep3Title: string;
   howStep3Desc: string;
+  extensionPromoBadge: string;
   extensionPromoTitle: string;
   extensionPromoDesc: string;
   extensionPromoCta: string;

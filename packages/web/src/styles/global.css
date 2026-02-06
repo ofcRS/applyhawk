@@ -1,26 +1,26 @@
-/* ApplyHawk - Dark SaaS Theme */
+/* ApplyHawk - Editorial Terminal Theme */
 
 :root {
   /* Background */
-  --bg-base: #0a0a0b;
-  --bg-surface: rgba(255, 255, 255, 0.04);
-  --bg-surface-hover: rgba(255, 255, 255, 0.06);
-  --bg-surface-active: rgba(255, 255, 255, 0.08);
-  --bg-elevated: rgba(255, 255, 255, 0.06);
+  --bg-base: #08080a;
+  --bg-surface: #0e0e11;
+  --bg-surface-hover: #1a1a1f;
+  --bg-surface-active: #202026;
+  --bg-elevated: #141418;
   --bg-overlay: rgba(0, 0, 0, 0.6);
 
-  /* Accent gradient */
-  --accent-from: #7c5cfc;
-  --accent-to: #3b82f6;
+  /* Accent - Warm Amber */
+  --accent-from: #e8a230;
+  --accent-to: #f0b040;
   --accent-gradient: linear-gradient(135deg, var(--accent-from), var(--accent-to));
-  --accent-glow: 0 0 20px rgba(124, 92, 252, 0.3);
-  --accent-subtle: rgba(124, 92, 252, 0.15);
+  --accent-glow: 0 0 20px rgba(232, 162, 48, 0.3);
+  --accent-subtle: rgba(232, 162, 48, 0.12);
 
   /* Text */
-  --text-primary: #ececef;
-  --text-secondary: #8b8b92;
-  --text-tertiary: #5a5a63;
-  --text-on-accent: #ffffff;
+  --text-primary: #e8e6e1;
+  --text-secondary: #7a7872;
+  --text-tertiary: #4a4843;
+  --text-on-accent: #08080a;
 
   /* Semantic */
   --success: #22c55e;
@@ -31,9 +31,9 @@
   --error-bg: rgba(239, 68, 68, 0.12);
 
   /* Border */
-  --border: rgba(255, 255, 255, 0.08);
-  --border-hover: rgba(255, 255, 255, 0.14);
-  --border-focus: rgba(124, 92, 252, 0.5);
+  --border: #1e1e22;
+  --border-hover: #2a2a2f;
+  --border-focus: rgba(232, 162, 48, 0.5);
 
   /* Glass */
   --glass-bg: rgba(255, 255, 255, 0.03);
@@ -46,15 +46,16 @@
   --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.5);
 
   /* Radius */
-  --radius-sm: 6px;
-  --radius-base: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
-  --radius-full: 9999px;
+  --radius-sm: 0px;
+  --radius-base: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-full: 0px;
 
   /* Typography */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'SF Mono', 'Fira Code', monospace;
+  --font-sans: 'DM Mono', 'SF Mono', 'Fira Code', monospace;
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-mono: 'DM Mono', 'SF Mono', 'Fira Code', monospace;
 
   /* Transitions */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);

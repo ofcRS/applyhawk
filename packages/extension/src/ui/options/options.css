@@ -40,10 +40,17 @@ body {
   gap: var(--space-3);
 }
 
-.logo-icon {
+.logo-mark {
   width: 32px;
   height: 32px;
-  color: var(--color-primary);
+  background: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-md);
+  font-style: italic;
+  font-weight: var(--font-bold);
+  color: var(--color-text-inverse);
 }
 
 .logo-text {

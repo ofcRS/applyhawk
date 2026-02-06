@@ -9,23 +9,23 @@
      ───────────────────────────────────────────────────────────────────────── */
 
   /* Surfaces - Dark theme */
-  --color-void: #09090b;
-  --color-surface-0: #0f0f12;
-  --color-surface-1: #18181b;
-  --color-surface-2: #27272a;
-  --color-surface-3: #3f3f46;
+  --color-void: #08080a;
+  --color-surface-0: #0e0e11;
+  --color-surface-1: #141418;
+  --color-surface-2: #1e1e22;
+  --color-surface-3: #2a2a2f;
 
   /* Borders */
-  --color-border: #3f3f46;
-  --color-border-strong: #52525b;
-  --color-border-subtle: #27272a;
+  --color-border: #2a2a2f;
+  --color-border-strong: #3a3a40;
+  --color-border-subtle: #1e1e22;
 
-  /* Primary - Professional Blue */
-  --color-primary: #3b82f6;
-  --color-primary-hover: #2563eb;
-  --color-primary-active: #1d4ed8;
-  --color-primary-dim: rgba(59, 130, 246, 0.12);
-  --color-primary-glow: rgba(59, 130, 246, 0.25);
+  /* Primary - Warm Amber */
+  --color-primary: #e8a230;
+  --color-primary-hover: #f0b040;
+  --color-primary-active: #d4922a;
+  --color-primary-dim: rgba(232, 162, 48, 0.12);
+  --color-primary-glow: rgba(232, 162, 48, 0.25);
 
   /* Secondary - Slate */
   --color-secondary: #64748b;
@@ -48,23 +48,22 @@
   --color-error: #ef4444;
   --color-error-dim: rgba(239, 68, 68, 0.15);
 
-  --color-info: #3b82f6;
-  --color-info-dim: rgba(59, 130, 246, 0.15);
+  --color-info: #e8a230;
+  --color-info-dim: rgba(232, 162, 48, 0.15);
 
   /* Text */
-  --color-text-primary: #fafafa;
-  --color-text-secondary: #a1a1aa;
-  --color-text-muted: #71717a;
-  --color-text-disabled: #52525b;
-  --color-text-inverse: #09090b;
+  --color-text-primary: #e8e6e1;
+  --color-text-secondary: #7a7872;
+  --color-text-muted: #5a5855;
+  --color-text-disabled: #4a4843;
+  --color-text-inverse: #08080a;
 
   /* ─────────────────────────────────────────────────────────────────────────
      Typography
      ───────────────────────────────────────────────────────────────────────── */
 
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    sans-serif;
-  --font-mono: "IBM Plex Mono", "SF Mono", "Fira Code", monospace;
+  --font-sans: "DM Mono", "SF Mono", "Fira Code", monospace;
+  --font-mono: "DM Mono", "SF Mono", "Fira Code", monospace;
 
   /* Font Sizes */
   --text-xs: 11px;
