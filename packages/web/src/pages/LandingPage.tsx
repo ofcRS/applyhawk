@@ -12,34 +12,39 @@ function useScrollReveal(threshold = 0.15) {
   const refs = useRef<Record<string, Element>>({});
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  useEffect(() => {
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            const key = entry.target.getAttribute("data-reveal");
-            if (key) {
-              setRevealed((prev) => ({ ...prev, [key]: true }));
-              observerRef.current?.unobserve(entry.target);
+  const getObserver = useCallback(() => {
+    if (!observerRef.current) {
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) {
+              const key = entry.target.getAttribute("data-reveal");
+              if (key) {
+                setRevealed((prev) => ({ ...prev, [key]: true }));
+                observerRef.current?.unobserve(entry.target);
+              }
             }
           }
-        }
-      },
-      { threshold, rootMargin: "0px 0px -50px 0px" },
-    );
-
-    return () => observerRef.current?.disconnect();
+        },
+        { threshold, rootMargin: "0px 0px -50px 0px" },
+      );
+    }
+    return observerRef.current;
   }, [threshold]);
+
+  useEffect(() => {
+    return () => observerRef.current?.disconnect();
+  }, []);
 
   const setRef = useCallback(
     (key: string) => (el: HTMLElement | null) => {
       if (el && !refs.current[key]) {
         refs.current[key] = el;
         el.setAttribute("data-reveal", key);
-        observerRef.current?.observe(el);
+        getObserver().observe(el);
       }
     },
-    [],
+    [getObserver],
   );
 
   const isRevealed = useCallback(
