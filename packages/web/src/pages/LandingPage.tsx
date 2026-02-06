@@ -1,15 +1,69 @@
+import { useCallback, useEffect, useRef, useState } from "react";
 import LanguageToggle from "../components/common/LanguageToggle";
 import { useHashRoute } from "../hooks/useHashRoute";
 import { useI18n } from "../hooks/useI18n";
 import styles from "./LandingPage.module.css";
 
 const PLATFORMS = ["LinkedIn", "Indeed", "Glassdoor", "Greenhouse", "Lever", "HH.ru"];
+const PROMO_PLATFORMS = ["LinkedIn", "Indeed", "Glassdoor", "Greenhouse"];
 
-const FEATURE_ACCENTS = ["\u2726", "\u25C8", "\u25C7", "\u25C9"];
+function useScrollReveal(threshold = 0.15) {
+  const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  const refs = useRef<Record<string, Element>>({});
+  const observerRef = useRef<IntersectionObserver | null>(null);
+
+  useEffect(() => {
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const key = entry.target.getAttribute("data-reveal");
+            if (key) {
+              setRevealed((prev) => ({ ...prev, [key]: true }));
+              observerRef.current?.unobserve(entry.target);
+            }
+          }
+        }
+      },
+      { threshold, rootMargin: "0px 0px -50px 0px" },
+    );
+
+    return () => observerRef.current?.disconnect();
+  }, [threshold]);
+
+  const setRef = useCallback(
+    (key: string) => (el: HTMLElement | null) => {
+      if (el && !refs.current[key]) {
+        refs.current[key] = el;
+        el.setAttribute("data-reveal", key);
+        observerRef.current?.observe(el);
+      }
+    },
+    [],
+  );
+
+  const isRevealed = useCallback(
+    (key: string) => !!revealed[key],
+    [revealed],
+  );
+
+  return { setRef, isRevealed };
+}
 
 export default function LandingPage() {
   const { t } = useI18n();
   const { navigate } = useHashRoute();
+  const { setRef, isRevealed } = useScrollReveal();
+  const [activePromoIndex, setActivePromoIndex] = useState(0);
+  const promoRevealed = isRevealed("promo");
+
+  useEffect(() => {
+    if (!promoRevealed) return;
+    const id = setInterval(() => {
+      setActivePromoIndex((prev) => (prev + 1) % PROMO_PLATFORMS.length);
+    }, 2000);
+    return () => clearInterval(id);
+  }, [promoRevealed]);
 
   const features = [
     { title: t.featPersonalizationTitle, desc: t.featPersonalizationDesc },
@@ -58,7 +112,7 @@ export default function LandingPage() {
           <h1 className={styles.heroTitle}>
             {t.heroTitle}
             <br />
-            <em className={styles.heroTitleHighlight}>{t.heroTitleHighlight}</em>
+            <span className={styles.heroTitleHighlight}>{t.heroTitleHighlight}</span>
             {" for every\u00A0job"}
           </h1>
 
@@ -115,7 +169,10 @@ export default function LandingPage() {
       </div>
 
       {/* Features */}
-      <section className={styles.features}>
+      <section
+        ref={setRef("features")}
+        className={`${styles.features} ${styles.revealSection} ${isRevealed("features") ? styles.revealed : ""}`}
+      >
         <div className={styles.sectionHeader}>
           <span className={styles.sectionNumber}>01</span>
           <h2 className={styles.sectionTitle}>{t.featSectionTitle}</h2>
@@ -123,11 +180,11 @@ export default function LandingPage() {
 
         <div className={styles.featuresGrid}>
           {features.map(({ title, desc }, i) => (
-            <div key={title} className={styles.featureCard}>
-              <div className={styles.featureIndex}>
-                Feature {String(i + 1).padStart(2, "0")}
-              </div>
-              <div className={styles.featureAccent}>{FEATURE_ACCENTS[i]}</div>
+            <div
+              key={title}
+              className={`${styles.featureCard} ${isRevealed("features") ? styles.featureCardVisible : ""}`}
+              style={{ animationDelay: `${i * 0.1}s` }}
+            >
               <h3 className={styles.featureTitle}>{title}</h3>
               <p className={styles.featureDesc}>{desc}</p>
             </div>
@@ -136,7 +193,10 @@ export default function LandingPage() {
       </section>
 
       {/* How it works */}
-      <section className={styles.howItWorks}>
+      <section
+        ref={setRef("howItWorks")}
+        className={`${styles.howItWorks} ${styles.revealSection} ${isRevealed("howItWorks") ? styles.revealed : ""}`}
+      >
         <div className={styles.sectionHeader}>
           <span className={styles.sectionNumber}>02</span>
           <h2 className={styles.sectionTitle}>{t.howItWorksTitle}</h2>
@@ -144,7 +204,11 @@ export default function LandingPage() {
 
         <div className={styles.steps}>
           {steps.map(({ title, desc }, i) => (
-            <div key={title} className={styles.step}>
+            <div
+              key={title}
+              className={`${styles.step} ${isRevealed("howItWorks") ? styles.stepVisible : ""}`}
+              style={{ animationDelay: `${i * 0.15}s` }}
+            >
               <div className={styles.stepNumber}>
                 {String(i + 1).padStart(2, "0")}
               </div>
@@ -157,7 +221,10 @@ export default function LandingPage() {
       </section>
 
       {/* Extension promo */}
-      <section className={styles.promo}>
+      <section
+        ref={setRef("promo")}
+        className={`${styles.promo} ${styles.revealSection} ${isRevealed("promo") ? styles.revealed : ""}`}
+      >
         <div className={styles.promoCard}>
           <div className={styles.promoContent}>
             <div className={styles.promoBadge}>{t.extensionPromoBadge}</div>
@@ -174,26 +241,28 @@ export default function LandingPage() {
           </div>
 
           <div className={styles.promoVisual}>
-            {["LinkedIn", "Indeed", "Glassdoor", "Greenhouse"].map(
-              (platform, i) => (
-                <div key={platform} className={styles.promoPlatform}>
-                  <div
-                    className={
-                      i === 0
-                        ? styles.promoPlatformDot
-                        : styles.promoPlatformDotDim
-                    }
-                  />
-                  {platform}
-                </div>
-              ),
-            )}
+            {PROMO_PLATFORMS.map((platform, i) => (
+              <div
+                key={platform}
+                className={`${styles.promoPlatform} ${
+                  i === activePromoIndex
+                    ? styles.promoPlatformActive
+                    : styles.promoPlatformInactive
+                }`}
+              >
+                <div className={styles.promoPlatformDot} />
+                {platform}
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className={styles.footer}>
+      <footer
+        ref={setRef("footer")}
+        className={`${styles.footer} ${styles.revealSection} ${isRevealed("footer") ? styles.revealed : ""}`}
+      >
         <div className={styles.footerInner}>
           <span className={styles.footerText}>{t.footerPrivacy}</span>
           <div className={styles.footerLinks}>
