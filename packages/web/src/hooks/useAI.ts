@@ -5,6 +5,8 @@ import {
 } from "@applyhawk/core";
 import type {
   CoverLetterResult,
+  FitAssessment,
+  FitAssessmentResult,
   ParsedResumeResult,
   PersonalizedResume,
   Resume,
@@ -13,7 +15,6 @@ import type {
 } from "@applyhawk/core";
 import { useCallback, useMemo, useState } from "react";
 
-// Create prompt loader for web (loads from /prompts/ directory)
 const promptLoader = createPromptLoader({
   baseUrl: "/prompts/",
   defaultLanguage: "en",
@@ -65,8 +66,45 @@ export function useAI(settings: Settings) {
     [client],
   );
 
+  const assessFitScore = useCallback(
+    async (vacancy: Vacancy, resume: Resume): Promise<FitAssessmentResult> => {
+      if (!client) {
+        throw new Error("Please configure your OpenRouter API key in Settings");
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const language = detectLanguage(vacancy.description);
+        const result = await client.assessFitScore(vacancy, resume, (vars) =>
+          promptLoader.buildPromptFromTemplate(
+            "fit-assessment",
+            vars,
+            language,
+          ),
+        );
+        return result;
+      } catch (err) {
+        const message =
+          err instanceof Error
+            ? err.message
+            : "Failed to assess fit score";
+        setError(message);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [client],
+  );
+
   const generatePersonalizedResume = useCallback(
-    async (resume: Resume, vacancy: Vacancy): Promise<PersonalizedResume> => {
+    async (
+      resume: Resume,
+      vacancy: Vacancy,
+      fitAssessment?: FitAssessment | null,
+    ): Promise<PersonalizedResume> => {
       if (!client) {
         throw new Error("Please configure your OpenRouter API key in Settings");
       }
@@ -85,8 +123,8 @@ export function useAI(settings: Settings) {
               vars,
               language,
             ),
-          null, // fitAssessment
-          null, // aggressiveness (auto-calculate)
+          fitAssessment || null,
+          null, // aggressiveness (auto-calculate from settings)
           settings,
         );
         return result;
@@ -109,6 +147,7 @@ export function useAI(settings: Settings) {
       vacancy: Vacancy,
       baseResume: Resume,
       personalizedResume?: PersonalizedResume | null,
+      fitAssessment?: FitAssessment | null,
     ): Promise<CoverLetterResult> => {
       if (!client) {
         throw new Error("Please configure your OpenRouter API key in Settings");
@@ -119,6 +158,8 @@ export function useAI(settings: Settings) {
 
       try {
         const language = detectLanguage(vacancy.description);
+        const aggressiveness =
+          settings.aggressiveFit?.aggressivenessOverride ?? 0.5;
         const result = await client.generateCoverLetter(
           vacancy,
           baseResume,
@@ -129,8 +170,8 @@ export function useAI(settings: Settings) {
               language,
             ),
           personalizedResume,
-          null, // fitAssessment
-          0.5, // aggressiveness
+          fitAssessment || null,
+          aggressiveness,
           settings,
         );
         return result;
@@ -177,6 +218,7 @@ export function useAI(settings: Settings) {
 
   return {
     parseVacancy,
+    assessFitScore,
     generatePersonalizedResume,
     generateCoverLetter,
     parseResumePDF,

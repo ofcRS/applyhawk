@@ -1,0 +1,85 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--radius-base);
+  border: 1px solid transparent;
+  transition: all var(--duration-fast) var(--ease-out);
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Primary: gradient */
+.primary {
+  background: var(--accent-gradient);
+  color: var(--text-on-accent);
+  border-color: transparent;
+}
+
+.primary:not(:disabled):hover {
+  box-shadow: var(--accent-glow);
+  transform: translateY(-1px);
+}
+
+/* Secondary: glass */
+.secondary {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.secondary:not(:disabled):hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--border-hover);
+}
+
+/* Ghost */
+.ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.ghost:not(:disabled):hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+/* Sizes */
+.sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+  border-radius: var(--radius-sm);
+}
+
+.lg {
+  padding: 0.875rem 1.75rem;
+  font-size: 1rem;
+}
+
+/* Icon button */
+.iconOnly {
+  padding: 0.5rem;
+}
+
+.iconOnly.sm {
+  padding: 0.375rem;
+}
+
+/* Spinner inside button */
+.spinner {
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}

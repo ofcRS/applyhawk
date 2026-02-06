@@ -1,12 +1,11 @@
 import type { Settings } from "@applyhawk/core";
-import { useCallback, useEffect, useState } from "react";
-import styles from "./SettingsPanel.module.css";
-
-interface SettingsPanelProps {
-  settings: Settings;
-  onSave: (settings: Partial<Settings>) => void;
-  onClose: () => void;
-}
+import { Lock, Shield } from "lucide-react";
+import { useCallback, useContext, useEffect, useState } from "react";
+import Button from "../components/common/Button";
+import { InputField } from "../components/common/Input";
+import { StorageContext } from "../contexts/StorageContext";
+import { useI18n } from "../hooks/useI18n";
+import styles from "./SettingsPage.module.css";
 
 interface OpenRouterModel {
   id: string;
@@ -29,11 +28,36 @@ const RECOMMENDED_MODELS = [
 
 type ModelCategory = "recommended" | "all" | "budget";
 
-export default function SettingsPanel({
-  settings,
-  onSave,
-  onClose,
-}: SettingsPanelProps) {
+function formatModelName(name: string): string {
+  return name
+    .replace(
+      /^(anthropic|openai|google|meta-llama|qwen|mistralai|cohere|deepseek|microsoft)\//,
+      "",
+    )
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (l) => l.toUpperCase());
+}
+
+function formatPrice(pricing: { prompt?: string }): string {
+  const promptPrice = Number.parseFloat(pricing?.prompt || "0");
+  if (promptPrice === 0) return "Free";
+  const perMillion = promptPrice * 1000000;
+  if (perMillion < 0.01) return "<$0.01/1M";
+  if (perMillion < 1) return `$${perMillion.toFixed(2)}/1M`;
+  return `$${perMillion.toFixed(0)}/1M`;
+}
+
+function formatContext(length: number): string {
+  if (!length) return "N/A";
+  if (length >= 1000000) return `${(length / 1000000).toFixed(1)}M`;
+  if (length >= 1000) return `${Math.round(length / 1000)}K`;
+  return `${length}`;
+}
+
+export default function SettingsPage() {
+  const { t } = useI18n();
+  const { settings, updateSettings } = useContext(StorageContext);
+
   const [formData, setFormData] = useState({
     openRouterApiKey: settings.openRouterApiKey || "",
     preferredModel: settings.preferredModel || "anthropic/claude-sonnet-4",
@@ -56,7 +80,6 @@ export default function SettingsPanel({
   const [currentCategory, setCurrentCategory] =
     useState<ModelCategory>("recommended");
 
-  // Fetch models from OpenRouter API
   useEffect(() => {
     async function loadModels() {
       setIsLoadingModels(true);
@@ -114,32 +137,6 @@ export default function SettingsPanel({
     loadModels();
   }, []);
 
-  const formatModelName = (name: string): string => {
-    return name
-      .replace(
-        /^(anthropic|openai|google|meta-llama|qwen|mistralai|cohere|deepseek|microsoft)\//,
-        "",
-      )
-      .replace(/-/g, " ")
-      .replace(/\b\w/g, (l) => l.toUpperCase());
-  };
-
-  const formatPrice = (pricing: { prompt?: string }): string => {
-    const promptPrice = Number.parseFloat(pricing?.prompt || "0");
-    if (promptPrice === 0) return "Free";
-    const perMillion = promptPrice * 1000000;
-    if (perMillion < 0.01) return "<$0.01/1M";
-    if (perMillion < 1) return `$${perMillion.toFixed(2)}/1M`;
-    return `$${perMillion.toFixed(0)}/1M`;
-  };
-
-  const formatContext = (length: number): string => {
-    if (!length) return "N/A";
-    if (length >= 1000000) return `${(length / 1000000).toFixed(1)}M`;
-    if (length >= 1000) return `${Math.round(length / 1000)}K`;
-    return `${length}`;
-  };
-
   const filteredModels = allModels.filter((model) => {
     const matchesSearch =
       !searchQuery ||
@@ -163,7 +160,7 @@ export default function SettingsPanel({
 
   const handleSave = useCallback(() => {
     const { aggressiveness, adaptJobTitles, ...rest } = formData;
-    onSave({
+    const updated: Partial<Settings> = {
       ...rest,
       aggressiveFit: {
         enabled: true,
@@ -172,106 +169,81 @@ export default function SettingsPanel({
         aggressivenessOverride: aggressiveness / 100,
       },
       adaptJobTitles,
-    });
-  }, [formData, onSave]);
-
-  const handleModelSelect = useCallback((modelId: string) => {
-    setFormData((prev) => ({ ...prev, preferredModel: modelId }));
-  }, []);
+    };
+    updateSettings(updated);
+  }, [formData, updateSettings]);
 
   return (
-    <div className={styles.panel}>
-      <div className={styles.header}>
-        <h2>Settings</h2>
-        <button className={styles.closeButton} onClick={onClose}>
-          ✕
-        </button>
-      </div>
+    <div className={styles.page}>
+      <h1 className={styles.title}>{t.settingsTitle}</h1>
 
-      <div className={styles.content}>
-        {/* API Key */}
-        <section className={styles.section}>
-          <h3>AI Configuration</h3>
-          <div className="field">
-            <label className="label">OpenRouter API Key *</label>
-            <input
-              type="password"
-              className="input"
-              value={formData.openRouterApiKey}
-              onChange={(e) => handleChange("openRouterApiKey", e.target.value)}
-              placeholder="sk-or-..."
-            />
-            <p className={styles.hint}>
-              Get your API key at{" "}
-              <a
-                href="https://openrouter.ai/keys"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                openrouter.ai/keys
-              </a>
-            </p>
-          </div>
+      {/* AI Configuration */}
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>{t.aiConfig}</h2>
+        <p className={styles.sectionNote}>{t.apiKeyHint}{" "}
+          <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">
+            openrouter.ai/keys
+          </a>
+        </p>
 
-          <div className="field">
-            <label className="label">AI Model</label>
+        <div className={styles.fieldGroup}>
+          <InputField
+            type="password"
+            label={t.apiKeyLabel}
+            required
+            value={formData.openRouterApiKey}
+            onChange={(e) => handleChange("openRouterApiKey", e.target.value)}
+            placeholder="sk-or-..."
+          />
 
-            {/* Category buttons */}
+          {/* Model picker */}
+          <div>
+            <span className={styles.sliderLabel}>{t.modelLabel}</span>
+
             <div className={styles.modelCategories}>
-              <button
-                type="button"
-                className={`${styles.categoryBtn} ${currentCategory === "recommended" ? styles.active : ""}`}
-                onClick={() => setCurrentCategory("recommended")}
-              >
-                Top
-              </button>
-              <button
-                type="button"
-                className={`${styles.categoryBtn} ${currentCategory === "all" ? styles.active : ""}`}
-                onClick={() => setCurrentCategory("all")}
-              >
-                All
-              </button>
-              <button
-                type="button"
-                className={`${styles.categoryBtn} ${currentCategory === "budget" ? styles.active : ""}`}
-                onClick={() => setCurrentCategory("budget")}
-              >
-                Budget
-              </button>
+              {(["recommended", "all", "budget"] as ModelCategory[]).map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  className={`${styles.categoryBtn} ${currentCategory === cat ? styles.categoryBtnActive : ""}`}
+                  onClick={() => setCurrentCategory(cat)}
+                >
+                  {cat === "recommended"
+                    ? t.modelCategoryTop
+                    : cat === "all"
+                      ? t.modelCategoryAll
+                      : t.modelCategoryBudget}
+                </button>
+              ))}
             </div>
 
-            {/* Search input */}
-            <input
-              type="text"
-              className="input"
-              placeholder="Search models..."
+            <InputField
+              placeholder={t.modelSearchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ marginBottom: "0.75rem" }}
             />
 
-            {/* Model list */}
             <div className={styles.modelList}>
               {isLoadingModels ? (
                 <div className={styles.modelLoading}>
                   <span className={styles.modelSpinner} />
-                  <span>Loading models...</span>
+                  {t.loadingModels}
                 </div>
               ) : modelError ? (
-                <div className={styles.modelError}>
-                  <span>Failed to load models: {modelError}</span>
-                </div>
+                <div className={styles.modelError}>{modelError}</div>
               ) : filteredModels.length === 0 ? (
-                <div className={styles.modelEmpty}>
-                  <span>No models found</span>
-                </div>
+                <div className={styles.modelEmpty}>{t.noModelsFound}</div>
               ) : (
                 filteredModels.slice(0, 50).map((model) => (
                   <div
                     key={model.id}
-                    className={`${styles.modelItem} ${formData.preferredModel === model.id ? styles.selected : ""}`}
-                    onClick={() => handleModelSelect(model.id)}
+                    className={`${styles.modelItem} ${formData.preferredModel === model.id ? styles.modelItemSelected : ""}`}
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        preferredModel: model.id,
+                      }))
+                    }
                   >
                     <div className={styles.modelRadio} />
                     <div className={styles.modelContent}>
@@ -285,7 +257,7 @@ export default function SettingsPanel({
                         </span>
                         {model.isRecommended && (
                           <span
-                            className={`${styles.modelTag} ${styles.recommended}`}
+                            className={`${styles.modelTag} ${styles.modelTagRecommended}`}
                           >
                             Recommended
                           </span>
@@ -299,9 +271,11 @@ export default function SettingsPanel({
           </div>
 
           {/* Aggressiveness slider */}
-          <div className="field">
+          <div>
             <div className={styles.sliderHeader}>
-              <label className="label">Resume Personalization Level</label>
+              <span className={styles.sliderLabel}>
+                {t.personalizationLevelLabel}
+              </span>
               <span className={styles.sliderValue}>
                 {formData.aggressiveness}%
               </span>
@@ -320,18 +294,14 @@ export default function SettingsPanel({
               className={styles.slider}
             />
             <div className={styles.sliderLabels}>
-              <span>Conservative</span>
-              <span>Aggressive</span>
+              <span>{t.conservative}</span>
+              <span>{t.aggressive}</span>
             </div>
-            <p className={styles.hint}>
-              Higher values make AI adapt your resume more to match job
-              requirements. Lower values keep it closer to your original
-              experience.
-            </p>
+            <p className={styles.hint}>{t.personalizationHint}</p>
           </div>
 
-          {/* Adapt Job Titles checkbox */}
-          <div className="field">
+          {/* Adapt Job Titles */}
+          <div>
             <label className={styles.checkbox}>
               <input
                 type="checkbox"
@@ -343,84 +313,61 @@ export default function SettingsPanel({
                   }))
                 }
               />
-              <span>Adapt job titles to match vacancy</span>
+              <span>{t.adaptJobTitles}</span>
             </label>
-            <p className={styles.hint}>
-              When enabled, AI will modify your position titles to better match
-              the target job. When disabled, your original job titles remain
-              unchanged.
-            </p>
+            <p className={styles.hint}>{t.adaptJobTitlesHint}</p>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Contact Info */}
-        <section className={styles.section}>
-          <h3>Contact Info for Cover Letters</h3>
-          <p className={styles.sectionNote}>
-            This information will be included in generated cover letters.
-          </p>
+      {/* Contact Info */}
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>{t.contactForCoverLetters}</h2>
+        <p className={styles.sectionNote}>{t.contactForCoverLettersNote}</p>
 
-          <div className={styles.grid}>
-            <div className="field">
-              <label className="label">Email</label>
-              <input
-                type="email"
-                className="input"
-                value={formData.contactEmail}
-                onChange={(e) => handleChange("contactEmail", e.target.value)}
-                placeholder="john@example.com"
-              />
-            </div>
-            <div className="field">
-              <label className="label">Telegram</label>
-              <input
-                type="text"
-                className="input"
-                value={formData.contactTelegram}
-                onChange={(e) =>
-                  handleChange("contactTelegram", e.target.value)
-                }
-                placeholder="@johndoe"
-              />
-            </div>
-          </div>
+        <div className={styles.grid}>
+          <InputField
+            type="email"
+            label={t.email}
+            value={formData.contactEmail}
+            onChange={(e) => handleChange("contactEmail", e.target.value)}
+            placeholder="john@example.com"
+          />
+          <InputField
+            label={t.telegram}
+            value={formData.contactTelegram}
+            onChange={(e) => handleChange("contactTelegram", e.target.value)}
+            placeholder="@johndoe"
+          />
+        </div>
+        <div style={{ marginTop: "1rem" }}>
+          <InputField
+            label={t.salaryExpectation}
+            value={formData.salaryExpectation}
+            onChange={(e) => handleChange("salaryExpectation", e.target.value)}
+            placeholder="$150,000 - $180,000"
+          />
+        </div>
+      </section>
 
-          <div className="field">
-            <label className="label">Salary Expectation</label>
-            <input
-              type="text"
-              className="input"
-              value={formData.salaryExpectation}
-              onChange={(e) =>
-                handleChange("salaryExpectation", e.target.value)
-              }
-              placeholder="$150,000 - $180,000"
-            />
-          </div>
-        </section>
-
-        {/* Privacy Note */}
-        <section className={styles.privacyNote}>
-          <h4>🔒 Privacy</h4>
-          <p>
-            Your data is stored locally in your browser. We don't have access to
-            your resume, job applications, or API key. All AI processing happens
-            through your own OpenRouter account.
-          </p>
-        </section>
+      {/* Privacy */}
+      <div className={styles.privacyNote}>
+        <div className={styles.privacyTitle}>
+          <Shield size={16} />
+          {t.privacyTitle}
+        </div>
+        <p className={styles.privacyText}>{t.privacyNote}</p>
       </div>
 
+      {/* Save */}
       <div className={styles.actions}>
-        <button className="btn btn-secondary" onClick={onClose}>
-          Cancel
-        </button>
-        <button
-          className="btn btn-primary"
+        <Button
           onClick={handleSave}
           disabled={!formData.openRouterApiKey}
+          icon={<Lock size={14} />}
         >
-          Save Settings
-        </button>
+          {t.saveSettings}
+        </Button>
       </div>
     </div>
   );

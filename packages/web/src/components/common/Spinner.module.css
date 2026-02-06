@@ -1,0 +1,29 @@
+.spinner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ring {
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent-from);
+  animation: spin 0.7s linear infinite;
+}
+
+.sm {
+  width: 16px;
+  height: 16px;
+}
+
+.md {
+  width: 24px;
+  height: 24px;
+  border-width: 2.5px;
+}
+
+.lg {
+  width: 36px;
+  height: 36px;
+  border-width: 3px;
+}

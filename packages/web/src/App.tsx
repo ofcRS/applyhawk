@@ -1,15 +1,43 @@
-import { useState } from "react";
-import AppPage from "./pages/AppPage";
-import Landing from "./pages/Landing";
+import { I18nProvider } from "./contexts/I18nContext";
+import { StorageProvider } from "./contexts/StorageContext";
+import { useHashRoute } from "./hooks/useHashRoute";
+import AppLayout from "./layouts/AppLayout";
+import LandingPage from "./pages/LandingPage";
+import ResumePage from "./pages/ResumePage";
+import SettingsPage from "./pages/SettingsPage";
+import WorkspacePage from "./pages/WorkspacePage";
 
-function App() {
-  const [showApp, setShowApp] = useState(false);
+function AppRouter() {
+  const { route } = useHashRoute();
 
-  if (showApp) {
-    return <AppPage onBack={() => setShowApp(false)} />;
+  if (route === "/" || route === "") {
+    return <LandingPage />;
   }
 
-  return <Landing onGetStarted={() => setShowApp(true)} />;
+  // All #/app/* routes share AppLayout
+  let page: React.ReactNode;
+  switch (route) {
+    case "/app/resume":
+      page = <ResumePage />;
+      break;
+    case "/app/settings":
+      page = <SettingsPage />;
+      break;
+    case "/app":
+    default:
+      page = <WorkspacePage />;
+      break;
+  }
+
+  return <AppLayout>{page}</AppLayout>;
 }
 
-export default App;
+export default function App() {
+  return (
+    <I18nProvider>
+      <StorageProvider>
+        <AppRouter />
+      </StorageProvider>
+    </I18nProvider>
+  );
+}
