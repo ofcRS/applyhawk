@@ -124,7 +124,27 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className={styles.footer}>
-        <p className={styles.footerText}>{t.footerPrivacy}</p>
+        <p className={styles.footerText}>
+          {t.footerPrivacy}
+          {" · "}
+          <a
+            href="#/privacy"
+            onClick={(e) => {
+              e.preventDefault();
+              navigate("/privacy");
+            }}
+          >
+            Privacy Policy
+          </a>
+          {" · "}
+          <a
+            href="https://github.com/ofcRS/applyhawk"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            GitHub
+          </a>
+        </p>
       </footer>
     </div>
   );

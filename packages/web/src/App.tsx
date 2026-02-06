@@ -3,6 +3,7 @@ import { StorageProvider } from "./contexts/StorageContext";
 import { useHashRoute } from "./hooks/useHashRoute";
 import AppLayout from "./layouts/AppLayout";
 import LandingPage from "./pages/LandingPage";
+import PrivacyPage from "./pages/PrivacyPage";
 import ResumePage from "./pages/ResumePage";
 import SettingsPage from "./pages/SettingsPage";
 import WorkspacePage from "./pages/WorkspacePage";
@@ -12,6 +13,10 @@ function AppRouter() {
 
   if (route === "/" || route === "") {
     return <LandingPage />;
+  }
+
+  if (route === "/privacy") {
+    return <PrivacyPage />;
   }
 
   // All #/app/* routes share AppLayout

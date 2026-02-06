@@ -291,3 +291,13 @@
   font-size: 0.8125rem;
   color: var(--text-tertiary);
 }
+
+.footerText a {
+  color: var(--text-tertiary);
+  transition: color var(--duration-fast);
+}
+
+.footerText a:hover {
+  color: var(--text-secondary);
+  opacity: 1;
+}
