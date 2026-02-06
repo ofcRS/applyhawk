@@ -107,12 +107,18 @@ export default function LandingPage() {
         <div className={styles.promoCard}>
           <h2 className={styles.promoTitle}>{t.extensionPromoTitle}</h2>
           <p className={styles.promoDesc}>{t.extensionPromoDesc}</p>
-          <Button
-            variant="secondary"
-            icon={<Chrome size={16} />}
+          <a
+            href="https://github.com/ofcRS/applyhawk"
+            target="_blank"
+            rel="noopener noreferrer"
           >
-            {t.extensionPromoCta}
-          </Button>
+            <Button
+              variant="secondary"
+              icon={<Chrome size={16} />}
+            >
+              {t.extensionPromoCta}
+            </Button>
+          </a>
         </div>
       </section>
 
