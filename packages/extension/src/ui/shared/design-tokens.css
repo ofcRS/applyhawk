@@ -32,10 +32,10 @@
   --color-secondary-hover: #475569;
   --color-secondary-dim: rgba(100, 116, 139, 0.12);
 
-  /* Accent - For highlights (HH.ru red preserved for platform-specific) */
-  --color-accent: #ef4444;
-  --color-accent-hover: #dc2626;
-  --color-accent-dim: rgba(239, 68, 68, 0.12);
+  /* Accent - Teal (matches icon) */
+  --color-accent: #11CACD;
+  --color-accent-hover: #1EE4E9;
+  --color-accent-dim: rgba(17, 202, 205, 0.12);
 
   /* Status Colors */
   --color-success: #22c55e;

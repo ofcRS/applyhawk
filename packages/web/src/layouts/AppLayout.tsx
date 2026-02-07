@@ -33,7 +33,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             navigate("/");
           }}
         >
-          <img src="/favicon.png" alt="" className={styles.logoIcon} />
+          <img src="/icon.svg" alt="" className={styles.logoIcon} />
           <span className={styles.logoText}>{t.appName}</span>
         </a>
 
