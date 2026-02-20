@@ -19,7 +19,7 @@ function PrivacyEn({ onBack }: { onBack: () => void }) {
       </a>
 
       <h1 className={styles.title}>Privacy Policy</h1>
-      <p className={styles.updated}>Last updated: February 6, 2025</p>
+      <p className={styles.updated}>Last updated: February 20, 2026</p>
 
       <div className={styles.highlight}>
         <p>
@@ -71,15 +71,17 @@ function PrivacyEn({ onBack }: { onBack: () => void }) {
         </p>
         <ul className={styles.list}>
           <li><strong>Storage</strong> — to save your resume, settings, and preferences locally in Chrome</li>
-          <li><strong>Active Tab / Tabs / Scripting</strong> — to detect job pages and inject the ApplyHawk button on supported job boards</li>
+          <li><strong>Active Tab</strong> — to read the job description from the page you're currently viewing when you click the extension icon</li>
+          <li><strong>Tabs / Scripting</strong> — to inject the ApplyHawk content script that detects and parses job postings</li>
           <li><strong>Side Panel</strong> — to display the ApplyHawk side panel interface</li>
           <li><strong>Cookies</strong> — to check authentication status on HH.ru for the direct apply feature</li>
-          <li><strong>Host permissions</strong> (job sites) — to detect and parse job postings on supported platforms (HH.ru, LinkedIn, Indeed, Glassdoor, Greenhouse, Lever, Workday, etc.)</li>
+          <li><strong>Host permission</strong> (openrouter.ai) — to send AI requests to the OpenRouter API from the background service worker using your own API key</li>
         </ul>
         <p className={styles.text}>
-          The optional "all URLs" permission is requested only when you want to use ApplyHawk
-          on a job board not in the default list. You can deny this permission and the extension
-          will still work on all pre-configured platforms.
+          ApplyHawk does not request broad host permissions for job sites. Instead, it uses the
+          Active Tab permission to access only the page you're viewing when you click the icon.
+          If you want persistent access on a specific job board, the extension may request
+          optional permission for that site — you can grant or deny it at any time.
         </p>
       </section>
 
@@ -145,7 +147,7 @@ function PrivacyRu({ onBack }: { onBack: () => void }) {
       </a>
 
       <h1 className={styles.title}>Политика конфиденциальности</h1>
-      <p className={styles.updated}>Обновлено: 6 февраля 2025</p>
+      <p className={styles.updated}>Обновлено: 20 февраля 2026</p>
 
       <div className={styles.highlight}>
         <p>
@@ -197,14 +199,17 @@ function PrivacyRu({ onBack }: { onBack: () => void }) {
         </p>
         <ul className={styles.list}>
           <li><strong>Storage</strong> — для сохранения резюме, настроек и предпочтений локально в Chrome</li>
-          <li><strong>Active Tab / Tabs / Scripting</strong> — для обнаружения страниц вакансий и добавления кнопки ApplyHawk</li>
+          <li><strong>Active Tab</strong> — для чтения описания вакансии со страницы, которую вы просматриваете, при нажатии на иконку расширения</li>
+          <li><strong>Tabs / Scripting</strong> — для внедрения контент-скрипта, который обнаруживает и разбирает вакансии</li>
           <li><strong>Side Panel</strong> — для отображения боковой панели ApplyHawk</li>
           <li><strong>Cookies</strong> — для проверки авторизации на HH.ru для функции быстрого отклика</li>
-          <li><strong>Host permissions</strong> (сайты вакансий) — для обнаружения и разбора вакансий на поддерживаемых платформах</li>
+          <li><strong>Host permission</strong> (openrouter.ai) — для отправки ИИ-запросов к API OpenRouter из фонового сервис-воркера с использованием вашего API-ключа</li>
         </ul>
         <p className={styles.text}>
-          Опциональное разрешение на доступ ко всем сайтам запрашивается только если вы хотите
-          использовать ApplyHawk на сайте вакансий, который отсутствует в стандартном списке.
+          ApplyHawk не запрашивает широкие разрешения для доступа к сайтам вакансий. Вместо этого
+          используется разрешение Active Tab для доступа только к странице, которую вы просматриваете
+          при нажатии на иконку. Если вы хотите постоянный доступ на конкретном сайте вакансий,
+          расширение может запросить опциональное разрешение — вы можете предоставить или отклонить его в любое время.
         </p>
       </section>
 

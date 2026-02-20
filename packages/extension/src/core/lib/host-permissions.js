@@ -8,17 +8,6 @@
  * in the manifest — no need to request permission for these.
  */
 const KNOWN_DOMAINS = [
-  "hh.ru",
-  "linkedin.com",
-  "indeed.com",
-  "glassdoor.com",
-  "greenhouse.io",
-  "lever.co",
-  "myworkdayjobs.com",
-  "workday.com",
-  "icims.com",
-  "ashbyhq.com",
-  "smartrecruiters.com",
   "openrouter.ai",
 ];
 
