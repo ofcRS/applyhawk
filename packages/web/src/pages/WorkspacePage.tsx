@@ -13,16 +13,18 @@ import {
   Clipboard,
   Download,
   FileText,
-  Key,
+
   Mail,
   RefreshCw,
   Search,
+  Zap,
 } from "lucide-react";
 import { useCallback, useContext, useState } from "react";
 import Button from "../components/common/Button";
 import Spinner from "../components/common/Spinner";
 import { StorageContext } from "../contexts/StorageContext";
 import { useAI } from "../hooks/useAI";
+import { useFreeUsage } from "../hooks/useFreeUsage";
 import { useHashRoute } from "../hooks/useHashRoute";
 import { useI18n } from "../hooks/useI18n";
 import styles from "./WorkspacePage.module.css";
@@ -42,6 +44,7 @@ export default function WorkspacePage() {
   const { navigate } = useHashRoute();
   const { resume, settings } = useContext(StorageContext);
   const ai = useAI(settings);
+  const { usage, markSessionComplete, isLimitReached } = useFreeUsage(ai.isProxyMode);
 
   const [step, setStep] = useState<WorkspaceStep>("input");
   const [jobText, setJobText] = useState("");
@@ -71,10 +74,15 @@ export default function WorkspacePage() {
       setFitAssessment(fitResult);
       setStep("assessed");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Analysis failed");
+      const message = err instanceof Error ? err.message : "Analysis failed";
+      if (message.includes("FREE_LIMIT_REACHED")) {
+        setError(t.freeTrialExhausted);
+      } else {
+        setError(message);
+      }
       setStep("input");
     }
-  }, [jobText, resume, ai]);
+  }, [jobText, resume, ai, t]);
 
   // Step 2: Generate resume + cover letter
   const handleGenerate = useCallback(async () => {
@@ -100,11 +108,20 @@ export default function WorkspacePage() {
       setCoverLetter(genCover);
 
       setStep("complete");
+
+      // Increment session counter for free-tier users
+      await markSessionComplete();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Generation failed");
-      setStep("assessed");
+      const message = err instanceof Error ? err.message : "Generation failed";
+      if (message.includes("FREE_LIMIT_REACHED")) {
+        setError(t.freeTrialExhausted);
+        setStep("input");
+      } else {
+        setError(message);
+        setStep("assessed");
+      }
     }
-  }, [vacancy, resume, fitAssessment, ai]);
+  }, [vacancy, resume, fitAssessment, ai, markSessionComplete, t]);
 
   // Reset
   const handleNewJob = useCallback(() => {
@@ -149,28 +166,21 @@ export default function WorkspacePage() {
     } catch {}
   }, []);
 
-  // No API key → onboarding
-  if (!ai.isConfigured) {
+  // Free tier exhausted → upgrade prompt
+  if (isLimitReached) {
     return (
       <div className={styles.page}>
         <h1 className={styles.title}>{t.workspaceTitle}</h1>
         <div className={styles.onboarding}>
           <div className={styles.onboardingIcon}>
-            <Key size={24} />
+            <Zap size={24} />
           </div>
-          <h2 className={styles.onboardingTitle}>{t.noApiKeyTitle}</h2>
-          <p className={styles.onboardingDesc}>{t.noApiKeyDesc}</p>
+          <h2 className={styles.onboardingTitle}>{t.freeTrialExhausted}</h2>
+          <p className={styles.onboardingDesc}>{t.freeTrialExhaustedDesc}</p>
           <Button onClick={() => navigate("/app/settings")}>
             {t.navSettings}
           </Button>
-          <a
-            className={styles.onboardingLink}
-            href="https://openrouter.ai/keys"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {t.noApiKeyLink}
-          </a>
+          <p className={styles.onboardingLink}>{t.freeTrialResetsDaily}</p>
         </div>
       </div>
     );
@@ -194,6 +204,27 @@ export default function WorkspacePage() {
   return (
     <div className={styles.page}>
       <h1 className={styles.title}>{t.workspaceTitle}</h1>
+
+      {/* Free tier banner */}
+      {ai.isProxyMode && usage && usage.remaining > 0 && (
+        <div className={styles.freeBanner}>
+          <Zap size={14} />
+          <span>
+            {t.freeTrialBanner
+              .replace("{remaining}", String(usage.remaining))
+              .replace("{limit}", String(usage.limit))}
+          </span>
+          <a
+            href="#/app/settings"
+            onClick={(e) => {
+              e.preventDefault();
+              navigate("/app/settings");
+            }}
+          >
+            {t.freeTrialUpgrade}
+          </a>
+        </div>
+      )}
 
       {error && (
         <div className={styles.error}>

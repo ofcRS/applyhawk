@@ -176,6 +176,7 @@ export interface AIClientConfig {
   apiKey: string;
   model?: string;
   baseUrl?: string;
+  mode?: "direct" | "proxy";
 }
 
 export interface AICallOptions {

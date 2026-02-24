@@ -182,12 +182,16 @@ export class OpenRouterClient {
   ): Promise<{ content: string; model: string; usage?: AIUsage }> {
     const { messages, temperature = 0.7, max_tokens = 2000, model } = options;
 
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (this.config.mode !== "proxy") {
+      headers.Authorization = `Bearer ${this.config.apiKey}`;
+    }
+
     const response = await fetch(this.config.baseUrl!, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.config.apiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify({
         model: model || this.config.model,
         temperature,

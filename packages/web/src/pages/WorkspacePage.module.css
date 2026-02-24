@@ -53,6 +53,27 @@
   display: block;
 }
 
+/* Free tier banner */
+.freeBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: var(--accent-subtle);
+  border: 1px solid rgba(99, 91, 255, 0.15);
+  border-radius: var(--radius-base);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.freeBanner a {
+  margin-left: auto;
+  font-weight: 500;
+  color: var(--accent-from);
+  white-space: nowrap;
+}
+
 /* Job input area */
 .inputSection {
   margin-bottom: 1.5rem;

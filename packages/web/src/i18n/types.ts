@@ -84,6 +84,11 @@ export interface Translations {
   noApiKeyDesc: string;
   noApiKeyLink: string;
   languageDetected: string;
+  freeTrialBanner: string;
+  freeTrialUpgrade: string;
+  freeTrialExhausted: string;
+  freeTrialExhaustedDesc: string;
+  freeTrialResetsDaily: string;
 
   // Resume
   resumeTitle: string;
@@ -125,6 +130,7 @@ export interface Translations {
   aiConfig: string;
   apiKeyLabel: string;
   apiKeyHint: string;
+  apiKeyHintOptional: string;
   modelLabel: string;
   modelSearchPlaceholder: string;
   modelCategoryTop: string;

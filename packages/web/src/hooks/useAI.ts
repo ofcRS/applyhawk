@@ -26,19 +26,22 @@ export function useAI(settings: Settings) {
   const [error, setError] = useState<string | null>(null);
 
   const client = useMemo(() => {
-    if (!settings.openRouterApiKey) return null;
+    if (settings.openRouterApiKey) {
+      return createAIClient({
+        apiKey: settings.openRouterApiKey,
+        model: settings.preferredModel,
+        mode: "direct",
+      });
+    }
     return createAIClient({
-      apiKey: settings.openRouterApiKey,
-      model: settings.preferredModel,
+      apiKey: "",
+      baseUrl: "/api/ai/chat",
+      mode: "proxy",
     });
   }, [settings.openRouterApiKey, settings.preferredModel]);
 
   const parseVacancy = useCallback(
     async (rawText: string): Promise<Vacancy> => {
-      if (!client) {
-        throw new Error("Please configure your OpenRouter API key in Settings");
-      }
-
       setIsLoading(true);
       setError(null);
 
@@ -68,10 +71,6 @@ export function useAI(settings: Settings) {
 
   const assessFitScore = useCallback(
     async (vacancy: Vacancy, resume: Resume): Promise<FitAssessmentResult> => {
-      if (!client) {
-        throw new Error("Please configure your OpenRouter API key in Settings");
-      }
-
       setIsLoading(true);
       setError(null);
 
@@ -105,10 +104,6 @@ export function useAI(settings: Settings) {
       vacancy: Vacancy,
       fitAssessment?: FitAssessment | null,
     ): Promise<PersonalizedResume> => {
-      if (!client) {
-        throw new Error("Please configure your OpenRouter API key in Settings");
-      }
-
       setIsLoading(true);
       setError(null);
 
@@ -149,10 +144,6 @@ export function useAI(settings: Settings) {
       personalizedResume?: PersonalizedResume | null,
       fitAssessment?: FitAssessment | null,
     ): Promise<CoverLetterResult> => {
-      if (!client) {
-        throw new Error("Please configure your OpenRouter API key in Settings");
-      }
-
       setIsLoading(true);
       setError(null);
 
@@ -191,10 +182,6 @@ export function useAI(settings: Settings) {
 
   const parseResumePDF = useCallback(
     async (pdfText: string): Promise<ParsedResumeResult> => {
-      if (!client) {
-        throw new Error("Please configure your OpenRouter API key in Settings");
-      }
-
       setIsLoading(true);
       setError(null);
 
@@ -224,6 +211,7 @@ export function useAI(settings: Settings) {
     parseResumePDF,
     isLoading,
     error,
-    isConfigured: !!client,
+    isConfigured: true,
+    isProxyMode: !settings.openRouterApiKey,
   };
 }

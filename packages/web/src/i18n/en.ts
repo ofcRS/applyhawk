@@ -86,6 +86,11 @@ export const en: Translations = {
   noApiKeyDesc: "Enter your OpenRouter API key to get started with AI-powered resume personalization.",
   noApiKeyLink: "Get your API key at openrouter.ai/keys",
   languageDetected: "detected",
+  freeTrialBanner: "{remaining} of {limit} free sessions remaining today",
+  freeTrialUpgrade: "Add API key for unlimited",
+  freeTrialExhausted: "Free sessions used up",
+  freeTrialExhaustedDesc: "You've used all free sessions for today. Add your OpenRouter API key in Settings for unlimited use.",
+  freeTrialResetsDaily: "Free sessions reset daily at midnight.",
 
   // Resume
   resumeTitle: "Your Resume",
@@ -127,6 +132,7 @@ export const en: Translations = {
   aiConfig: "AI Configuration",
   apiKeyLabel: "OpenRouter API Key",
   apiKeyHint: "Get your API key at",
+  apiKeyHintOptional: "Optional — 3 free sessions included daily. Add a key for unlimited use with your preferred model.",
   modelLabel: "AI Model",
   modelSearchPlaceholder: "Search models...",
   modelCategoryTop: "Top",

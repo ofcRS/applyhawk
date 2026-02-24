@@ -35,6 +35,13 @@
         "esbuild": "^0.24.0",
       },
     },
+    "packages/proxy": {
+      "name": "@applyhawk/proxy",
+      "version": "1.0.0",
+      "dependencies": {
+        "hono": "^4.7.0",
+      },
+    },
     "packages/web": {
       "name": "@applyhawk/web",
       "version": "1.0.0",
@@ -58,6 +65,8 @@
     "@applyhawk/core": ["@applyhawk/core@workspace:packages/core"],
 
     "@applyhawk/extension": ["@applyhawk/extension@workspace:packages/extension"],
+
+    "@applyhawk/proxy": ["@applyhawk/proxy@workspace:packages/proxy"],
 
     "@applyhawk/web": ["@applyhawk/web@workspace:packages/web"],
 
@@ -356,6 +365,8 @@
     "fsevents": ["fsevents@2.3.3", "", { "os": "darwin" }, "sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw=="],
 
     "gensync": ["gensync@1.0.0-beta.2", "", {}, "sha512-3hN7NaskYvMDLQY55gnW3NQ+mesEAepTqlg+VEbj7zzqEMBVNhzcGYYeqFo/TlYz6eQiFcp1HcsCZO+nGgS8zg=="],
+
+    "hono": ["hono@4.11.8", "", {}, "sha512-eVkB/CYCCei7K2WElZW9yYQFWssG0DhaDhVvr7wy5jJ22K+ck8fWW0EsLpB0sITUTvPnc97+rrbQqIr5iqiy9Q=="],
 
     "js-tokens": ["js-tokens@4.0.0", "", {}, "sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ=="],
 

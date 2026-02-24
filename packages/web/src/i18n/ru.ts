@@ -86,6 +86,11 @@ export const ru: Translations = {
   noApiKeyDesc: "Введите ваш API-ключ OpenRouter для персонализации резюме с помощью ИИ.",
   noApiKeyLink: "Получите ключ на openrouter.ai/keys",
   languageDetected: "определён",
+  freeTrialBanner: "Осталось {remaining} из {limit} бесплатных сессий сегодня",
+  freeTrialUpgrade: "Добавьте API-ключ для безлимита",
+  freeTrialExhausted: "Бесплатные сессии исчерпаны",
+  freeTrialExhaustedDesc: "Вы использовали все бесплатные сессии на сегодня. Добавьте API-ключ OpenRouter в Настройках для безлимитного использования.",
+  freeTrialResetsDaily: "Бесплатные сессии обновляются ежедневно в полночь.",
 
   // Resume
   resumeTitle: "Ваше резюме",
@@ -127,6 +132,7 @@ export const ru: Translations = {
   aiConfig: "Настройки ИИ",
   apiKeyLabel: "API-ключ OpenRouter",
   apiKeyHint: "Получите ключ на",
+  apiKeyHintOptional: "Необязательно — 3 бесплатных сессии в день. Добавьте ключ для безлимитного использования с выбранной моделью.",
   modelLabel: "Модель ИИ",
   modelSearchPlaceholder: "Поиск моделей...",
   modelCategoryTop: "Лучшие",

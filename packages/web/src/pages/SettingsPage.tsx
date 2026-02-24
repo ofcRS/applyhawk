@@ -180,7 +180,7 @@ export default function SettingsPage() {
       {/* AI Configuration */}
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>{t.aiConfig}</h2>
-        <p className={styles.sectionNote}>{t.apiKeyHint}{" "}
+        <p className={styles.sectionNote}>{t.apiKeyHintOptional}{" "}
           <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">
             openrouter.ai/keys
           </a>
@@ -190,7 +190,6 @@ export default function SettingsPage() {
           <InputField
             type="password"
             label={t.apiKeyLabel}
-            required
             value={formData.openRouterApiKey}
             onChange={(e) => handleChange("openRouterApiKey", e.target.value)}
             placeholder="sk-or-..."
@@ -363,7 +362,6 @@ export default function SettingsPage() {
       <div className={styles.actions}>
         <Button
           onClick={handleSave}
-          disabled={!formData.openRouterApiKey}
           icon={<Lock size={14} />}
         >
           {t.saveSettings}

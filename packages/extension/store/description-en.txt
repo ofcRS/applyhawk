@@ -5,7 +5,7 @@ HOW IT WORKS
 1. Set up your base resume once (upload PDF or fill manually)
 2. Open any job posting on supported platforms
 3. Click the ApplyHawk button — AI analyzes the job, scores your fit, and generates a tailored resume + cover letter
-4. Download your personalized PDF or apply directly (HH.ru)
+4. Download your personalized PDF or apply directly on supported platforms
 
 KEY FEATURES
 
@@ -16,16 +16,9 @@ KEY FEATURES
 • ATS Form Fill — AI-powered auto-fill for application forms on ATS platforms
 • Multi-Language — Full English and Russian support, auto-detects job description language
 
-SUPPORTED PLATFORMS
+WORKS EVERYWHERE
 
-• HH.ru — Full integration with direct API, auto-apply
-• LinkedIn — Job page detection + one-click generation
-• Indeed — Job page detection + one-click generation
-• Glassdoor — Job page detection + one-click generation
-• Greenhouse — ATS job page detection
-• Lever — ATS job page detection
-• Workday — ATS job page detection
-• And more via universal detection
+ApplyHawk automatically detects job postings across major job boards and applicant tracking systems. Just open any job page — if a position is detected, the ApplyHawk button appears.
 
 PRIVACY FIRST
 
@@ -37,4 +30,4 @@ Privacy policy: https://applyhawk.top/#/privacy
 REQUIREMENTS
 
 • OpenRouter API key (get one free at openrouter.ai/keys)
-• Must be logged into job sites for platform-specific features (e.g., HH.ru auto-apply)
+• Must be logged into job sites for platform-specific features (e.g., direct apply)

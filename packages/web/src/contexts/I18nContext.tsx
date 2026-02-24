@@ -1,10 +1,14 @@
 import { createContext, useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { de } from "../i18n/de";
 import { en } from "../i18n/en";
+import { es } from "../i18n/es";
+import { fr } from "../i18n/fr";
+import { pt } from "../i18n/pt";
 import { ru } from "../i18n/ru";
 import type { Translations } from "../i18n/types";
 
-type Lang = "en" | "ru";
+type Lang = "en" | "ru" | "es" | "de" | "fr" | "pt";
 
 interface I18nContextValue {
   t: Translations;
@@ -12,18 +16,21 @@ interface I18nContextValue {
   setLang: (lang: Lang) => void;
 }
 
-const dictionaries: Record<Lang, Translations> = { en, ru };
+const dictionaries: Record<Lang, Translations> = { en, ru, es, de, fr, pt };
+
+const LANGS = Object.keys(dictionaries) as Lang[];
 
 function detectBrowserLanguage(): Lang {
   const nav = navigator.language || "";
-  if (nav.startsWith("ru")) return "ru";
+  const prefix = nav.split("-")[0].toLowerCase();
+  if (LANGS.includes(prefix as Lang)) return prefix as Lang;
   return "en";
 }
 
 function getStoredLang(): Lang | null {
   try {
     const stored = localStorage.getItem("applyhawk_lang");
-    if (stored === "en" || stored === "ru") return stored;
+    if (stored && LANGS.includes(stored as Lang)) return stored as Lang;
   } catch {}
   return null;
 }
