@@ -125,6 +125,7 @@ export const pt: Translations = {
   year: "Ano",
   continueToWorkspace: "Continuar para a área de trabalho",
   resumeRequired: "Nome completo e pelo menos 1 experiência profissional são obrigatórios.",
+  resumeRequiredDesc: "Adicione seu nome, experiência e habilidades para personalizar suas candidaturas.",
   apiKeyRequiredPdf: "Configure sua chave API do OpenRouter nas Configurações para habilitar a análise de PDF por IA.",
 
   // Settings

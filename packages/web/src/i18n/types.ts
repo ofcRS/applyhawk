@@ -123,6 +123,7 @@ export interface Translations {
   year: string;
   continueToWorkspace: string;
   resumeRequired: string;
+  resumeRequiredDesc: string;
   apiKeyRequiredPdf: string;
 
   // Settings

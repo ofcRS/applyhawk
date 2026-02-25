@@ -602,6 +602,16 @@ async function handleGeneratePdf() {
       elements.resumeError,
       "Please configure your base resume in Settings first",
     );
+    // Add actionable link to open Options page
+    const settingsLink = document.createElement("a");
+    settingsLink.href = "#";
+    settingsLink.textContent = "Open Resume Settings \u2192";
+    settingsLink.className = "error-action-link";
+    settingsLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      chrome.runtime.openOptionsPage();
+    });
+    elements.resumeError?.appendChild(settingsLink);
     return;
   }
 
@@ -657,6 +667,7 @@ async function handleGeneratePdf() {
         // Auto-set aggressiveness slider from calculated value
         if (fitResult.aggressiveness !== undefined) {
           const sliderValue = Math.round(fitResult.aggressiveness * 100);
+          const previousValue = elements.pdfAggressiveness?.value;
           if (elements.pdfAggressiveness) {
             elements.pdfAggressiveness.value = sliderValue;
           }
@@ -664,6 +675,9 @@ async function handleGeneratePdf() {
             elements.pdfAggressivenessValue.textContent = `${sliderValue}%`;
           }
           aggressiveness = fitResult.aggressiveness;
+          if (previousValue != sliderValue) {
+            showToast(`Aggressiveness auto-adjusted to ${sliderValue}% based on fit analysis`, "info");
+          }
         }
 
         // Check if low fit — show warning and wait for user decision

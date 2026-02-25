@@ -101,12 +101,33 @@ async function openModal() {
     createModal();
   }
 
-  // Show modal
+  // Show modal in ready state (user must click Generate)
   modal.classList.add("visible");
   document.body.style.overflow = "hidden";
 
-  // Start loading data and generating
-  startGeneration();
+  // Show vacancy preview and enable Generate button
+  const generateBtn = document.getElementById("modal-generate-btn");
+  if (generateBtn) {
+    generateBtn.disabled = false;
+    generateBtn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+        <path d="M2 17l10 5 10-5"></path>
+        <path d="M2 12l10 5 10-5"></path>
+      </svg>
+      Генерировать
+    `;
+  }
+
+  // Reset resume columns to initial state
+  const baseContent = document.getElementById("base-resume-content");
+  const personalizedContent = document.getElementById("personalized-resume-content");
+  if (baseContent) {
+    baseContent.innerHTML = `<div style="color: #999; text-align: center; padding: 20px;">Нажмите «Генерировать» для начала</div>`;
+  }
+  if (personalizedContent) {
+    personalizedContent.innerHTML = `<div style="color: #999; text-align: center; padding: 20px;">Ожидание генерации...</div>`;
+  }
 }
 
 /**
@@ -120,7 +141,17 @@ function createModal() {
     <div class="hh-autoapply-modal-content">
       <div class="hh-autoapply-modal-header">
         <h2>AI Персонализация для ${escapeHtml(currentVacancy?.company || "компании")}</h2>
-        <button class="hh-autoapply-close" aria-label="Закрыть">&times;</button>
+        <div class="hh-autoapply-header-actions">
+          <button id="modal-generate-btn" class="hh-autoapply-btn-generate">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+              <path d="M2 17l10 5 10-5"></path>
+              <path d="M2 12l10 5 10-5"></path>
+            </svg>
+            Генерировать
+          </button>
+          <button class="hh-autoapply-close" aria-label="Закрыть">&times;</button>
+        </div>
       </div>
 
       <div class="hh-autoapply-modal-body">
@@ -245,6 +276,16 @@ function createModal() {
   modal
     .querySelector("#modal-cancel-btn")
     .addEventListener("click", closeModal);
+  modal
+    .querySelector("#modal-generate-btn")
+    .addEventListener("click", () => {
+      const btn = document.getElementById("modal-generate-btn");
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Генерация...';
+      }
+      startGeneration();
+    });
   modal
     .querySelector("#regenerate-letter-btn")
     .addEventListener("click", regenerateLetter);

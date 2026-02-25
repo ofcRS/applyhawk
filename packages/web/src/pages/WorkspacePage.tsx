@@ -61,7 +61,7 @@ export default function WorkspacePage() {
 
   // Step 1: Analyze job
   const handleAnalyze = useCallback(async () => {
-    if (!jobText.trim() || !resume) return;
+    if (!jobText.trim() || !resume?.fullName) return;
 
     setError(null);
     setStep("parsing");
@@ -86,7 +86,7 @@ export default function WorkspacePage() {
 
   // Step 2: Generate resume + cover letter
   const handleGenerate = useCallback(async () => {
-    if (!vacancy || !resume) return;
+    if (!vacancy || !resume?.fullName) return;
 
     setError(null);
     setStep("generating");
@@ -234,7 +234,19 @@ export default function WorkspacePage() {
       )}
 
       {/* Step 1: Job input */}
-      {step === "input" && (
+      {step === "input" && !resume?.fullName && (
+        <div className={styles.onboarding}>
+          <div className={styles.onboardingIcon}>
+            <FileText size={24} />
+          </div>
+          <h2 className={styles.onboardingTitle}>{t.resumeRequired}</h2>
+          <p className={styles.onboardingDesc}>{t.resumeRequiredDesc}</p>
+          <Button onClick={() => navigate("/app/resume")}>
+            {t.navResume}
+          </Button>
+        </div>
+      )}
+      {step === "input" && resume?.fullName && (
         <div className={styles.inputSection}>
           <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)", marginBottom: "0.75rem" }}>
             {t.pasteJobDesc}
@@ -259,29 +271,13 @@ export default function WorkspacePage() {
             <div className={styles.analyzeActions}>
               <Button
                 onClick={handleAnalyze}
-                disabled={!jobText.trim() || !resume}
+                disabled={!jobText.trim() || !resume?.fullName}
                 icon={<Search size={14} />}
               >
                 {t.analyzeBtn}
               </Button>
             </div>
           </div>
-          {!resume?.fullName && (
-            <div className={styles.error} style={{ marginTop: "0.75rem" }}>
-              <AlertCircle size={16} />
-              {t.resumeRequired}
-              {" "}
-              <a
-                href="#/app/resume"
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate("/app/resume");
-                }}
-              >
-                {t.navResume}
-              </a>
-            </div>
-          )}
         </div>
       )}
 

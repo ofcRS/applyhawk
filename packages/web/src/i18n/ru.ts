@@ -125,6 +125,7 @@ export const ru: Translations = {
   year: "Год",
   continueToWorkspace: "Перейти к рабочей области",
   resumeRequired: "Необходимо указать имя и минимум 1 место работы.",
+  resumeRequiredDesc: "Добавьте имя, опыт работы и навыки, чтобы мы могли персонализировать ваши отклики.",
   apiKeyRequiredPdf: "Настройте API-ключ OpenRouter в Настройках для AI-разбора PDF.",
 
   // Settings

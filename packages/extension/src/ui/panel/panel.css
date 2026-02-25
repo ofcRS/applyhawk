@@ -392,6 +392,20 @@
   font-size: var(--text-sm);
 }
 
+.error-action-link {
+  display: inline-block;
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--color-primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.error-action-link:hover {
+  color: var(--color-text-primary);
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
    Cover Letter Result
    ───────────────────────────────────────────────────────────────────────── */

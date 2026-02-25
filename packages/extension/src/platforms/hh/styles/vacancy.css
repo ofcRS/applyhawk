@@ -173,6 +173,22 @@
   margin: 0;
 }
 
+.hh-autoapply-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hh-autoapply-header-actions .hh-autoapply-btn-generate {
+  background: var(--vermillion);
+  color: white;
+  border-color: var(--vermillion);
+}
+
+.hh-autoapply-header-actions .hh-autoapply-btn-generate:hover:not(:disabled) {
+  background: #e05530;
+}
+
 .hh-autoapply-close {
   width: 36px;
   height: 36px;
